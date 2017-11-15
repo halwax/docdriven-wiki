@@ -1,0 +1,29 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  
+  <title>Doc Driven Wiki</title>
+   
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/simple-line-icons/2.4.1/css/simple-line-icons.css" />
+  <link rel="stylesheet" href="/css/main.css" />
+
+</head>
+
+<body>
+
+  <div class="wiki-app">
+    <doc-wiki v-bind:window-width="windowWidth"/>
+  </div>
+  
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://unpkg.com/markdown-it@8.4.0/dist/markdown-it.min.js"></script>
+  <script src="https://unpkg.com/lodash@4.16.0"></script>
+  <script src="https://unpkg.com/vue@2.5.3"></script>
+  <script src="monaco-editor/min/vs/loader.js"></script>
+  <script src="js/app.js"></script>
+ 
+</body>
+</html>

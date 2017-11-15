@@ -1,0 +1,56 @@
+body {
+  /* font-family: 'Open Sans Condensed', sans-serif;*/
+  font-family: "Segoe UI", "Open Sans", Calibri, Candara, Arial, sans-serif;
+  font-size: 1em;
+  margin-left: 3%;
+  margin-right: 3%;
+}
+
+.doc-header {
+  border-bottom: solid 2px;
+}
+
+.doc-metainfo {
+  border-bottom: solid 1px;
+}
+
+.doc-header h3 h2 h1 {
+  text-align: center;
+  text-transform: uppercase;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.doc-content textarea { 
+  font-family: inherit; 
+  font-size: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.doc-toolbar {
+  text-align: right;
+}
+
+.doc-selectable {
+  cursor: pointer;
+  margin-right: 1em;
+}
+
+.doc-selectable:hover {
+  box-shadow: 0 0 5px rgba(33,33,33,.2);
+}
+
+.hidden {
+  display: none;
+}
+
+.doc-section-toolbar {
+  text-align: right;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.monaco-editor.vs .line-numbers {
+  color: darkgray ;
+}
