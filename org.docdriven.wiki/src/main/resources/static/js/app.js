@@ -32,7 +32,7 @@ Vue.component('doc-editable',{
 /**
  * Markdown Component
  */
-Vue.component('doc-section-markdown', {
+Vue.component('doc-block-markdown', {
   template: '<div v-show="show" v-html="compiledMarkdown"></div>',
   props: ['show', 'content'],
   computed: {
@@ -42,9 +42,9 @@ Vue.component('doc-section-markdown', {
   }
 });
 
-Vue.component('doc-section-toolbar', {
+Vue.component('doc-block-toolbar', {
 	template: [
-    '<div class="doc-section-toolbar" v-show="show">',
+    '<div class="doc-block-toolbar" v-show="show">',
     ' <i class="fa-file-code-o fa doc-selectable"></i>',
     ' <i class="fa-file-text-o fa doc-selectable"></i>',
     ' <i class="fa-arrow-down fa doc-selectable"></i>',
@@ -57,7 +57,7 @@ Vue.component('doc-section-toolbar', {
 /**
  * Moncao Editor Component
  */
-Vue.component('doc-section-editor', {
+Vue.component('doc-block-editor', {
   template : '<div style="width:100%;height:400px" class="doc-editable" v-show="show"></div>',
   props: ['show', 'content', 'windowWidth'],
   watch: {
@@ -111,15 +111,15 @@ Vue.component('doc-section-editor', {
 })
 
 /**
- * Document Section, content can be modified in an Editor when in Edit Mode,
- * otherwise it renders the markdown content of a section.
+ * Document Block, content can be modified in an Editor when in Edit Mode,
+ * otherwise it renders the markdown content of a block.
  */
-Vue.component('doc-section', {
+Vue.component('doc-block', {
   template: [
   	'<div>',
-  	'  <doc-section-toolbar :show="isInEditMode"/>',
-    '  <doc-section-editor :show="isInEditMode" :content="document.content" :windowWidth="windowWidth" @contentChanged="triggerChangeContent"/>',
-    '  <doc-section-markdown :show="!isInEditMode" :content="document.content"/>',
+  	'  <doc-block-toolbar :show="isInEditMode"/>',
+    '  <doc-block-editor :show="isInEditMode" :content="document.content" :windowWidth="windowWidth" @contentChanged="triggerChangeContent"/>',
+    '  <doc-block-markdown :show="!isInEditMode" :content="document.content"/>',
     '</div>'
   ].join('\n'),
   props: ['isInEditMode', 'windowWidth', 'document'],
@@ -176,7 +176,7 @@ Vue.component('doc-wiki', {
     '   @updateSummary="updateSummary"',
     ' />',
     ' <div class="doc-content">',
-    '  <doc-section',
+    '  <doc-block',
     '     :windowWidth="windowWidth"',
     '     :isInEditMode="isInEditMode"',
     '     :document="document"',
@@ -194,7 +194,10 @@ Vue.component('doc-wiki', {
           title: 'Title',
           summary: 'Summary'
         },
-        content: '## Content'
+        content: '## Content',
+        blocks: [
+
+        ]
       }
     }
   },
