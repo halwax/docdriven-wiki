@@ -6,12 +6,20 @@ body {
   margin-right: 3%;
 }
 
+input, select, textarea, button{
+  font-family:inherit;
+}
+
 .doc-header {
   border-bottom: solid 2px;
 }
 
 .doc-metainfo {
   border-bottom: solid 1px;
+}
+
+.doc-editable {
+  border: dashed 1px grey;
 }
 
 .doc-header h3 h2 h1 {

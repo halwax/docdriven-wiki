@@ -1,9 +1,38 @@
 require.config({ paths: { 'vs': 'monaco-editor/min/vs' }});
 
+var docDriven = new DocDriven();
+
+Vue.component('doc-editable',{
+  template: [
+    '<div>',
+    ' <div class="doc-editable" v-show="active" contenteditable="true" @input="update">{{editableContent}}</div>',
+    ' <div v-show="!active">{{content}}</div>',
+    '</div>'
+  ].join('\n'),
+  props:['content','active'],
+  data:function(){
+    return {
+      editableContent: this.content
+    }
+  },
+  watch: {
+    content: function(newContent){
+      if(!this.active) {
+        this.editableContent = newContent;
+      }
+    }
+  },
+  methods:{
+    update:function(event){
+      this.$emit('update',event.target.innerText);
+    }
+  }
+});
+
 /**
  * Markdown Component
  */
-Vue.component('section-markdown', {
+Vue.component('doc-section-markdown', {
   template: '<div v-show="show" v-html="compiledMarkdown"></div>',
   props: ['show', 'content'],
   computed: {
@@ -13,11 +42,13 @@ Vue.component('section-markdown', {
   }
 });
 
-Vue.component('section-toolbar', {
+Vue.component('doc-section-toolbar', {
 	template: [
-	  '<div class="doc-section-toolbar" v-show="show">',
-    ' <i class="icon-speech icons doc-selectable"></i>',
-    ' <i class="icon-doc icons doc-selectable"></i>',
+    '<div class="doc-section-toolbar" v-show="show">',
+    ' <i class="fa-file-code-o fa doc-selectable"></i>',
+    ' <i class="fa-file-text-o fa doc-selectable"></i>',
+    ' <i class="fa-arrow-down fa doc-selectable"></i>',
+    ' <i class="fa-arrow-up fa doc-selectable"></i>',
     '</div>'
     ].join('\n'),
     props: ['show']
@@ -26,8 +57,8 @@ Vue.component('section-toolbar', {
 /**
  * Moncao Editor Component
  */
-Vue.component('section-editor', {
-  template : '<div style="width:100%;height:400px;border:1px solid grey" v-show="show"></div>',
+Vue.component('doc-section-editor', {
+  template : '<div style="width:100%;height:400px" class="doc-editable" v-show="show"></div>',
   props: ['show', 'content', 'windowWidth'],
   watch: {
     windowWidth: function(newWindowWidth) {
@@ -62,12 +93,12 @@ Vue.component('section-editor', {
     },
     createMonaco: function() {
       this.editor = window.monaco.editor.create(this.$el, this.editorOptions);
-      var handleChangedContent = this.handleChangedContent;
+      var triggerChangeContent = this.triggerChangeContent;
       this.editor.onDidChangeModelContent(function(e){
-        handleChangedContent(e);
+        triggerChangeContent(e);
       });
     },
-    handleChangedContent: _.debounce(function (e) {
+    triggerChangeContent: _.debounce(function (e) {
       var content = this.editor.getValue();
       this.$emit('contentChanged',content);
     }, 300),
@@ -86,45 +117,48 @@ Vue.component('section-editor', {
 Vue.component('doc-section', {
   template: [
   	'<div>',
-  	'  <section-toolbar v-bind:show="isInEditMode"/>',
-    '  <section-editor v-bind:show="isInEditMode" v-bind:content="content" v-bind:windowWidth="windowWidth" v-on:contentChanged="changeContent"/>',
-    '  <section-markdown v-bind:show="!isInEditMode" v-bind:content="content"/>',
+  	'  <doc-section-toolbar :show="isInEditMode"/>',
+    '  <doc-section-editor :show="isInEditMode" :content="document.content" :windowWidth="windowWidth" @contentChanged="triggerChangeContent"/>',
+    '  <doc-section-markdown :show="!isInEditMode" :content="document.content"/>',
     '</div>'
   ].join('\n'),
-  props: ['isInEditMode', 'windowWidth'],
-  data: function() { 
-    return {
-      content: [
-        '## Content'
-       ].join('\n')
+  props: ['isInEditMode', 'windowWidth', 'document'],
+  methods: {
+    triggerChangeContent: function(content) {
+      this.$emit('contentChanged', content);
     }
-  },
-  mounted: function() {
-    this.loadContent();
-  },
+  }
+})
+
+Vue.component('doc-header',{
+  template: [
+    '<div>',
+    ' <!-- Header Section -->',
+    ' <div class="doc-header">',
+    '   <div class="doc-toolbar">',
+    '    <i class="fa fa-download fa-lg doc-selectable"></i>',
+    '    <i class="fa fa-eye fa-lg doc-selectable" v-show="isInEditMode" @click="switchEditMode"></i>',
+    '    <i class="fa fa-pencil-square-o fa-lg doc-selectable" v-show="!isInEditMode" @click="switchEditMode"></i>',
+    '   </div>',
+    '   <h1><doc-editable :active="isInEditMode" :content="document.meta.title" @update="updateTitel"/></h1>',
+    ' </div>',  
+    ' <div class="doc-metainfo">',
+    '  <p>',
+    '    <doc-editable :active="isInEditMode" :content="document.meta.summary" @update="updateSummary"/>',
+    '  </p>',
+    ' </div>',
+    '</div>',
+  ].join('\n'),
+  props:['document','isInEditMode'],
   methods: {
     switchEditMode: function() {
-      this.isInEditMode = !this.isInEditMode;
+      this.$emit('switchEditMode');
     },
-    changeContent: function(content) {
-      this.content = content;
-      this.autoSaveContent();
+    updateTitel: function(title) {
+      this.$emit('updateTitle', title);
     },
-    initContent: function(content) {
-      this.content = content;
-    },
-    autoSaveContent: _.debounce(function () {
-      axios.post('/document', this.content, {
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-    }, 500),
-    loadContent: function() {
-      var initContent = this.initContent;
-      axios.get('/document').then(function (response) {
-        initContent(response.data);
-      })
+    updateSummary: function(summary) {
+      this.$emit('updateSummary', summary);
     }
   }
 })
@@ -135,33 +169,71 @@ Vue.component('doc-section', {
 Vue.component('doc-wiki', {
   template: [
     '<div>',
-    ' <!-- Header Section -->',
-    ' <div class="doc-header">',
-    '   <div class="doc-toolbar">',
-    '    <i class="icon-cloud-download icons doc-selectable"></i>',
-    '    <i class="icon-note icons doc-selectable" v-on:click="switchEditMode"></i>',
-    '   </div>',
-    '   <h1>Doc Title</h1>',
-    ' </div>',  
-    ' <div class="doc-metainfo">',
-    '  <p>',
-    '    <b>Summary :</b> summary',
-    '  </p>',
-    ' </div>',
+    ' <doc-header v-bind:document="document"',
+    '   :isInEditMode="isInEditMode"',
+    '   @switchEditMode="switchEditMode"',
+    '   @updateTitle="updateTitle"',
+    '   @updateSummary="updateSummary"',
+    ' />',
     ' <div class="doc-content">',
-    '  <doc-section v-bind:windowWidth="windowWidth" v-bind:isInEditMode="isInEditMode"/>',
+    '  <doc-section',
+    '     :windowWidth="windowWidth"',
+    '     :isInEditMode="isInEditMode"',
+    '     :document="document"',
+    '     @contentChanged="changeContent"',
+    '  />',
     ' </div>',
     '</div>'
   ].join('\n'),
   props: ['windowWidth'],
   data: function() { 
     return {
-      isInEditMode: false
+      isInEditMode: false,
+      document: {
+        meta: {
+          title: 'Title',
+          summary: 'Summary'
+        },
+        content: '## Content'
+      }
     }
+  },
+  mounted: function() {
+    this.loadContent();
   },
   methods: {
     switchEditMode: function() {
       this.isInEditMode = !this.isInEditMode;
+    },
+    changeContent: function(content) {
+      this.document.content = content;
+      this.autoSaveContent();
+    },
+    initContent: function(content) {
+      var document = docDriven.extract(content);
+      this.document.content = document.content;
+      this.document.meta = document.meta;
+    },
+    updateTitle: function(title) {
+      this.document.meta.title = title;
+      this.autoSaveContent();
+    },
+    updateSummary: function(summary) {
+      this.document.meta.summary = summary;
+      this.autoSaveContent();
+    },
+    autoSaveContent: _.debounce(function () {
+      axios.post('/document', docDriven.render(this.document), {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+    }, 500),
+    loadContent: function() {
+      var initContent = this.initContent;
+      axios.get('/document').then(function (response) {
+        initContent(response.data);
+      })
     }
   }
 })
