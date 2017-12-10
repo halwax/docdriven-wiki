@@ -5,7 +5,11 @@ var docDriven = new DocDriven();
 Vue.component('doc-editable',{
   template: [
     '<div>',
-    ' <div class="doc-editable" v-show="active" contenteditable="true" @input="update">{{editableContent}}</div>',
+    ' <div class="doc-editable"'+
+    '   v-show="active"',
+    '   contenteditable="true"',
+    '   @input="update">{{editableContent}}'+
+    ' </div>',
     ' <div v-show="!active">{{content}}</div>',
     '</div>'
   ].join('\n'),

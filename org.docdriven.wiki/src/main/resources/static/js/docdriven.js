@@ -22,6 +22,8 @@ var DocDriven = function() {
   // NOTE: If this pattern uses the 'g' flag the `regex` variable definition will
   // need to be moved down into the functions that use it.
   this.regex = new RegExp(pattern, 'm')
+  var codeLanguagePattern = '^```(.+?)?\\r?\\n([\\s\\S]*?)\\r?\\n```$';
+  this.codeLanguageRegexp = new RegExp(codeLanguagePattern, 'm');
 }
 
 DocDriven.prototype.extract = function(string) {
@@ -58,6 +60,34 @@ DocDriven.prototype.parse = function (string) {
   return document;
 }
 
+DocDriven.prototype.addBlock = function(document, blockText) {
+  var id = this.uuidv4();
+  var language = 'markdown';
+  var match = this.codeLanguageRegexp.exec(blockText);
+  var codeBlock = false;
+
+  if(match && match.index == 0) {
+    codeBlock = true;
+    if(match.length==2) {
+      language = '';
+      blockText = match[1];
+    }
+    if(match.length==3) {
+      language = match[1];
+      blockText = match[2];
+    }
+  }
+
+  document.blocks[id] = {
+    id: id,
+    codeBlock: codeBlock,
+    language: language,
+    content: blockText
+  }
+  document.blockOrder.push(id);
+  return document;
+}
+
 DocDriven.prototype.initDocument = function() {
   return { 
     meta: {}, 
@@ -68,19 +98,6 @@ DocDriven.prototype.initDocument = function() {
 
 DocDriven.prototype.setMeta = function(document, meta) {
   document.meta = meta;
-  return document;
-}
-
-DocDriven.prototype.addBlock = function(document, blockText) {
-  var id = this.uuidv4();
-  var language = 'markdown';
-
-  document.blocks[id] = {
-    id: id,
-    language: language,
-    content: blockText
-  }
-  document.blockOrder.push(id);
   return document;
 }
 
@@ -95,7 +112,14 @@ DocDriven.prototype.render = function (document) {
     jsyaml.safeDump(document.meta),
     '---',
     _.map(document.blockOrder, function(id) {
-      return document.blocks[id].content;
+      var block = document.blocks[id];
+      var startBlock = '';
+      var endBlock = '';
+      if(block.codeBlock){
+        startBlock = '```' + block.language + '\n';
+        endBlock = '\n```';
+      }
+      return startBlock + block.content + endBlock;
     }).join('\n[//]: # (block)\n')
   ].join('\n');
 }

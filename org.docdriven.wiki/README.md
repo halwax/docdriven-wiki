@@ -11,6 +11,10 @@ and consistent documentation in a structured way.
 
 ## Inspiration
 
+### Structure
+
+- Ant-Design - <https://ant-design-vue.github.io/antv-doc/components/rate/>
+
 ### Concepts
 
 - Software Architecture for Developers (by Simon Brown - <http://www.codingthearchitecture.com/authors/sbrown/>)
@@ -55,3 +59,8 @@ function() {
 - StackEdit - <https://stackedit.io/>
 - Markdeep - <https://casual-effects.com/markdeep/>
 - <https://opensource.com/life/15/8/markup-lowdown>
+
+[//]: # (block)
+```javascript
+console.log('test');
+```
