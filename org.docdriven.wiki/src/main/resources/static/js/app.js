@@ -33,11 +33,26 @@ Vue.component('doc-editable',{
  * Markdown Component
  */
 Vue.component('doc-block-markdown', {
-  template: '<div v-show="show" v-html="compiledMarkdown"></div>',
-  props: ['show', 'content'],
+  template: [
+    '<div',
+    ' v-bind:class="{ \'doc-editable\': isInEditMode }"',
+    ' v-show="show"',
+    ' v-html="compiledMarkdown"',
+    ' @click="onDivClick"',
+    '>',
+    '</div>'
+  ].join('\n'),
+  props: ['show', 'content', 'isInEditMode'],
   computed: {
     compiledMarkdown: function () {
       return window.markdownit().render(this.content)
+    }
+  },
+  methods: {
+    onDivClick: function(e) {
+      if(this.isInEditMode) {
+        this.$emit('activateBlockEditMode');
+      }
     }
   }
 });
@@ -59,7 +74,7 @@ Vue.component('doc-block-toolbar', {
  */
 Vue.component('doc-block-editor', {
   template : '<div style="width:100%;height:400px" class="doc-editable" v-show="show"></div>',
-  props: ['show', 'content', 'windowWidth'],
+  props: ['show', 'content', 'windowWidth', 'language'],
   watch: {
     windowWidth: function(newWindowWidth) {
       if(this.editor) {
@@ -80,7 +95,7 @@ Vue.component('doc-block-editor', {
     editorOptions: function() {
       return {
         value: this.content,
-        language: 'markdown'
+        language: this.language
       };
     }
   },
@@ -118,14 +133,31 @@ Vue.component('doc-block', {
   template: [
   	'<div>',
   	'  <doc-block-toolbar :show="isInEditMode"/>',
-    '  <doc-block-editor :show="isInEditMode" :content="document.content" :windowWidth="windowWidth" @contentChanged="triggerChangeContent"/>',
-    '  <doc-block-markdown :show="!isInEditMode" :content="document.content"/>',
+    '  <doc-block-editor', 
+    '   :show="isInBlockEditMode"'+
+    '   :content="block.content"'+
+    '   :windowWidth="windowWidth"'+
+    '   @contentChanged="triggerChangeContent"/>',
+    '  <doc-block-markdown',
+    '   :show="!isInBlockEditMode"',
+    '   :isInEditMode="isInEditMode"',
+    '   :content="block.content"'+
+    '   @activateBlockEditMode="triggerBlockEditMode"'+
+    '  />',
     '</div>'
   ].join('\n'),
-  props: ['isInEditMode', 'windowWidth', 'document'],
+  props: ['isInEditMode', 'windowWidth', 'block'],
+  data: function() {
+    return {
+      isInBlockEditMode: false
+    }
+  },
   methods: {
     triggerChangeContent: function(content) {
       this.$emit('contentChanged', content);
+    },
+    triggerBlockEditMode: function(e) {
+      this.isInBlockEditMode = true;
     }
   }
 })
@@ -176,10 +208,10 @@ Vue.component('doc-wiki', {
     '   @updateSummary="updateSummary"',
     ' />',
     ' <div class="doc-content">',
-    '  <doc-block',
+    '  <doc-block v-for="block in document.blocks"',
     '     :windowWidth="windowWidth"',
     '     :isInEditMode="isInEditMode"',
-    '     :document="document"',
+    '     :block="block"',
     '     @contentChanged="changeContent"',
     '  />',
     ' </div>',
@@ -196,7 +228,10 @@ Vue.component('doc-wiki', {
         },
         content: '## Content',
         blocks: [
-
+          {
+            language : 'markdown',
+            content : '## Content'
+          }
         ]
       }
     }
@@ -215,6 +250,13 @@ Vue.component('doc-wiki', {
     initContent: function(content) {
       var document = docDriven.extract(content);
       this.document.content = document.content;
+      this.document.blocks = [{
+        'language' : 'markdown',
+        'content' : document.content
+      }, {
+        'language' : 'javascript',
+        'content' : 'console.log("test");'
+      }];
       this.document.meta = document.meta;
     },
     updateTitle: function(title) {
