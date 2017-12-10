@@ -6,10 +6,9 @@
  * 
  * <ul>
  *  <li>front-matter : https://github.com/jxson/front-matter (MIT license)</li>
- *  <li>
+ *  <li></li>
  * </ul>
  */
-
 var DocDriven = function() {
   var optionalByteOrderMark = '\\ufeff?'
   var pattern = '^(' +
@@ -32,25 +31,57 @@ DocDriven.prototype.extract = function(string) {
   if (lines[0] && /= yaml =|---/.test(lines[0])) {
     return this.parse(string)
   } else {
-    return { meta: {}, content: string }
+    return this.addBlock(this.initDocument(),string)
   }
 }
 
 DocDriven.prototype.parse = function (string) {
+  
+  var docDriven = this;
   var match = this.regex.exec(string)
 
   if (!match) {
-    return {
-      meta: {},
-      content: string
-    }
+    return this.addBlock(this.initDocument(),string)
   }
 
   var yaml = match[match.length - 1].replace(/^\s+|\s+$/g, '')
   var meta = jsyaml.load(yaml) || {}
   var content = string.replace(match[0], '')
 
-  return { meta: meta, content: content}
+  var document = this.setMeta(this.initDocument(),meta)
+
+  var blocks = {};
+  var blockOrder = [];
+  _.forEach(content.split(/\[\/\/\]: # \(block\)(?:\r?\n)?/), function(blockText) {
+    docDriven.addBlock(document, blockText);
+  })
+  return document;
+}
+
+DocDriven.prototype.initDocument = function() {
+  return { 
+    meta: {}, 
+    blocks: {},
+    blockOrder: []
+  }
+}
+
+DocDriven.prototype.setMeta = function(document, meta) {
+  document.meta = meta;
+  return document;
+}
+
+DocDriven.prototype.addBlock = function(document, blockText) {
+  var id = this.uuidv4();
+  var language = 'markdown';
+
+  document.blocks[id] = {
+    id: id,
+    language: language,
+    content: blockText
+  }
+  document.blockOrder.push(id);
+  return document;
 }
 
 DocDriven.prototype.test = function (string) {
@@ -63,7 +94,9 @@ DocDriven.prototype.render = function (document) {
     '---',
     jsyaml.safeDump(document.meta),
     '---',
-    _.map(document.blockOrder, function(id) {return document.blocks[id].content;}).join('\n')
+    _.map(document.blockOrder, function(id) {
+      return document.blocks[id].content;
+    }).join('\n[//]: # (block)\n')
   ].join('\n');
 }
 

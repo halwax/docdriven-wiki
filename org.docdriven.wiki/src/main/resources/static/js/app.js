@@ -250,15 +250,11 @@ Vue.component('doc-wiki', {
     },
     initContent: function(content) {
       var document = docDriven.extract(content);
-
-      var contentId = docDriven.uuidv4();
-      this.$set(this.document.blocks, contentId, {
-        'id' : contentId,
-        'language' : 'markdown',
-        'content' : document.content
+      var docWiki = this;
+      _.forEach(document.blockOrder, function(id) {
+        docWiki.$set(docWiki.document.blocks, id, document.blocks[id]);
+        docWiki.document.blockOrder.push(id);        
       })
-      this.document.blockOrder.push(contentId);
-
       this.document.blocksInEditMode = [];
       this.document.meta = document.meta;
     },
