@@ -42,10 +42,10 @@ Vue.component('doc-block-markdown', {
     '>',
     '</div>'
   ].join('\n'),
-  props: ['show', 'content', 'isInEditMode'],
+  props: ['show', 'block', 'isInEditMode'],
   computed: {
     compiledMarkdown: function () {
-      return window.markdownit().render(this.content)
+      return window.markdownit().render(this.block.content)
     }
   },
   methods: {
@@ -74,7 +74,7 @@ Vue.component('doc-block-toolbar', {
  */
 Vue.component('doc-block-editor', {
   template : '<div style="width:100%;height:400px" class="doc-editable" v-show="show"></div>',
-  props: ['show', 'content', 'windowWidth', 'language'],
+  props: ['show', 'block', 'windowWidth'],
   watch: {
     windowWidth: function(newWindowWidth) {
       if(this.editor) {
@@ -94,8 +94,8 @@ Vue.component('doc-block-editor', {
   computed: {
     editorOptions: function() {
       return {
-        value: this.content,
-        language: this.language
+        value: this.block.content,
+        language: this.block.language
       };
     }
   },
@@ -115,7 +115,11 @@ Vue.component('doc-block-editor', {
     },
     triggerChangeContent: _.debounce(function (e) {
       var content = this.editor.getValue();
-      this.$emit('contentChanged',content);
+      var changedBlock = {
+        id: this.block.id,
+        content: content
+      }
+      this.$emit('blockChanged',changedBlock);
     }, 300),
     destroyMonaco: function() {
       if (typeof this.editor !== 'undefined') {
@@ -135,21 +139,21 @@ Vue.component('doc-block', {
   	'  <doc-block-toolbar :show="isInEditMode"/>',
     '  <doc-block-editor', 
     '   :show="isBlockInEditMode()"',
-    '   :content="block.content"',
+    '   :block="block"',
     '   :windowWidth="windowWidth"',
-    '   @contentChanged="triggerChangeContent"/>',
+    '   @blockChanged="triggerChangeBlock"/>',
     '  <doc-block-markdown',
     '   :show="!isBlockInEditMode()"',
     '   :isInEditMode="isInEditMode"',
-    '   :content="block.content"',
+    '   :block="block"',
     '   @activateBlockEditMode="triggerBlockEditMode"',
     '  />',
     '</div>'
   ].join('\n'),
   props: ['isInEditMode', 'blocksInEditMode', 'windowWidth', 'block'],
   methods: {
-    triggerChangeContent: function(content) {
-      this.$emit('contentChanged', content);
+    triggerChangeBlock: function(content) {
+      this.$emit('blockChanged', content);
     },
     triggerBlockEditMode: function(e) {
       this.$emit('activateBlockEditMode', this.block);
@@ -211,7 +215,7 @@ Vue.component('doc-wiki', {
     '     :isInEditMode="isInEditMode"',
     '     :blocksInEditMode="document.blocksInEditMode"',
     '     :block="document.blocks[blockId]"',
-    '     @contentChanged="changeContent"',
+    '     @blockChanged="changeBlock"',
     '     @activateBlockEditMode="triggerBlockEditMode"',
     '  />',
     ' </div>',
@@ -226,7 +230,6 @@ Vue.component('doc-wiki', {
           title: 'Title',
           summary: 'Summary'
         },
-        content: '## Content',
         blocksInEditMode: [],
         blockOrder: [],
         blocks: {}
@@ -241,31 +244,21 @@ Vue.component('doc-wiki', {
       this.isInEditMode = !this.isInEditMode;
       this.document.blocksInEditMode.pop();
     },
-    changeContent: function(content) {
-      this.document.content = content;
+    changeBlock: function(changedBlock) {
+      this.document.blocks[changedBlock.id].content = changedBlock.content;
       this.autoSaveContent();
     },
     initContent: function(content) {
       var document = docDriven.extract(content);
-      this.document.content = document.content;
 
       var contentId = docDriven.uuidv4();
-      var testId = docDriven.uuidv4();
-      this.document.blockOrder = [
-        contentId,
-        testId
-      ]
-
-      this.document.blocks[contentId] = {
+      this.$set(this.document.blocks, contentId, {
         'id' : contentId,
         'language' : 'markdown',
         'content' : document.content
-      }
-      this.document.blocks[testId] = {
-        'id' : testId,
-        'language' : 'javascript',
-        'content' : 'console.log("test");'
-      }
+      })
+      this.document.blockOrder.push(contentId);
+
       this.document.blocksInEditMode = [];
       this.document.meta = document.meta;
     },

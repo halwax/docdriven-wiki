@@ -63,7 +63,7 @@ DocDriven.prototype.render = function (document) {
     '---',
     jsyaml.safeDump(document.meta),
     '---',
-    document.content
+    _.map(document.blockOrder, function(id) {return document.blocks[id].content;}).join('\n')
   ].join('\n');
 }
 
