@@ -134,30 +134,28 @@ Vue.component('doc-block', {
   	'<div>',
   	'  <doc-block-toolbar :show="isInEditMode"/>',
     '  <doc-block-editor', 
-    '   :show="isInBlockEditMode"'+
-    '   :content="block.content"'+
-    '   :windowWidth="windowWidth"'+
+    '   :show="isBlockInEditMode()"',
+    '   :content="block.content"',
+    '   :windowWidth="windowWidth"',
     '   @contentChanged="triggerChangeContent"/>',
     '  <doc-block-markdown',
-    '   :show="!isInBlockEditMode"',
+    '   :show="!isBlockInEditMode()"',
     '   :isInEditMode="isInEditMode"',
-    '   :content="block.content"'+
-    '   @activateBlockEditMode="triggerBlockEditMode"'+
+    '   :content="block.content"',
+    '   @activateBlockEditMode="triggerBlockEditMode"',
     '  />',
     '</div>'
   ].join('\n'),
-  props: ['isInEditMode', 'windowWidth', 'block'],
-  data: function() {
-    return {
-      isInBlockEditMode: false
-    }
-  },
+  props: ['isInEditMode', 'blocksInEditMode', 'windowWidth', 'block'],
   methods: {
     triggerChangeContent: function(content) {
       this.$emit('contentChanged', content);
     },
     triggerBlockEditMode: function(e) {
-      this.isInBlockEditMode = true;
+      this.$emit('activateBlockEditMode', this.block);
+    },
+    isBlockInEditMode: function() {
+      return _.includes(this.blocksInEditMode, this.block.id);
     }
   }
 })
@@ -172,7 +170,7 @@ Vue.component('doc-header',{
     '    <i class="fa fa-eye fa-lg doc-selectable" v-show="isInEditMode" @click="switchEditMode"></i>',
     '    <i class="fa fa-pencil-square-o fa-lg doc-selectable" v-show="!isInEditMode" @click="switchEditMode"></i>',
     '   </div>',
-    '   <h1><doc-editable :active="isInEditMode" :content="document.meta.title" @update="updateTitel"/></h1>',
+    '   <h1><doc-editable :active="isInEditMode" :content="document.meta.title" @update="updateTitle"/></h1>',
     ' </div>',  
     ' <div class="doc-metainfo">',
     '  <p>',
@@ -186,7 +184,7 @@ Vue.component('doc-header',{
     switchEditMode: function() {
       this.$emit('switchEditMode');
     },
-    updateTitel: function(title) {
+    updateTitle: function(title) {
       this.$emit('updateTitle', title);
     },
     updateSummary: function(summary) {
@@ -208,11 +206,13 @@ Vue.component('doc-wiki', {
     '   @updateSummary="updateSummary"',
     ' />',
     ' <div class="doc-content">',
-    '  <doc-block v-for="block in document.blocks"',
+    '  <doc-block v-for="blockId in document.blockOrder" :key="blockId"',
     '     :windowWidth="windowWidth"',
     '     :isInEditMode="isInEditMode"',
-    '     :block="block"',
+    '     :blocksInEditMode="document.blocksInEditMode"',
+    '     :block="document.blocks[blockId]"',
     '     @contentChanged="changeContent"',
+    '     @activateBlockEditMode="triggerBlockEditMode"',
     '  />',
     ' </div>',
     '</div>'
@@ -227,12 +227,9 @@ Vue.component('doc-wiki', {
           summary: 'Summary'
         },
         content: '## Content',
-        blocks: [
-          {
-            language : 'markdown',
-            content : '## Content'
-          }
-        ]
+        blocksInEditMode: [],
+        blockOrder: [],
+        blocks: {}
       }
     }
   },
@@ -242,6 +239,7 @@ Vue.component('doc-wiki', {
   methods: {
     switchEditMode: function() {
       this.isInEditMode = !this.isInEditMode;
+      this.document.blocksInEditMode.pop();
     },
     changeContent: function(content) {
       this.document.content = content;
@@ -250,13 +248,25 @@ Vue.component('doc-wiki', {
     initContent: function(content) {
       var document = docDriven.extract(content);
       this.document.content = document.content;
-      this.document.blocks = [{
+
+      var contentId = docDriven.uuidv4();
+      var testId = docDriven.uuidv4();
+      this.document.blockOrder = [
+        contentId,
+        testId
+      ]
+
+      this.document.blocks[contentId] = {
+        'id' : contentId,
         'language' : 'markdown',
         'content' : document.content
-      }, {
+      }
+      this.document.blocks[testId] = {
+        'id' : testId,
         'language' : 'javascript',
         'content' : 'console.log("test");'
-      }];
+      }
+      this.document.blocksInEditMode = [];
       this.document.meta = document.meta;
     },
     updateTitle: function(title) {
@@ -266,6 +276,10 @@ Vue.component('doc-wiki', {
     updateSummary: function(summary) {
       this.document.meta.summary = summary;
       this.autoSaveContent();
+    },
+    triggerBlockEditMode: function(block) {
+      this.document.blocksInEditMode.pop();      
+      this.document.blocksInEditMode.push(block.id);
     },
     autoSaveContent: _.debounce(function () {
       axios.post('/document', docDriven.render(this.document), {
