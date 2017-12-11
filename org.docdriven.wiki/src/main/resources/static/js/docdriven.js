@@ -24,6 +24,8 @@ var DocDriven = function() {
   this.regex = new RegExp(pattern, 'm')
   var codeLanguagePattern = '^```(.+?)?\\r?\\n([\\s\\S]*?)\\r?\\n```$';
   this.codeLanguageRegexp = new RegExp(codeLanguagePattern, 'm');
+  this.blockSeparatorPattern = '^\\[//\\]: # \\(block(:.+?)?\\)(?:\\r?\\n)([\\s\\S]*)';
+  this.blockSeparatorRegexp = new RegExp(this.blockSeparatorPattern, 'm');
 }
 
 DocDriven.prototype.extract = function(string) {
@@ -54,13 +56,38 @@ DocDriven.prototype.parse = function (string) {
 
   var blocks = {};
   var blockOrder = [];
-  _.forEach(content.split(/\[\/\/\]: # \(block\)(?:\r?\n)?/), function(blockText) {
+
+  // use positive lookahead (?=...) to keep the block starting line
+  // in the split result to be able to extract the optional block
+  // parameter
+  
+  _.forEach(content.split(/(?:\r?\n)?(?=\[\/\/\]: # \(block(:.+?)?\)(?:\r?\n)?)/), function(blockText) {
     docDriven.addBlock(document, blockText);
   })
   return document;
 }
 
 DocDriven.prototype.addBlock = function(document, blockText) {
+
+  if(typeof(blockText) === "undefined" || blockText === null) {
+    return;
+  }
+
+  var blockSeparatorMatch = this.blockSeparatorRegexp.exec(blockText);
+  var blockParameter = '';
+  if(blockSeparatorMatch && blockSeparatorMatch.index == 0) {
+    if(blockSeparatorMatch.length==2) {
+      blockText = blockSeparatorMatch[1];
+    } else if (blockSeparatorMatch.length==3) {
+      blockParameter = blockSeparatorMatch[1];
+      blockText = blockSeparatorMatch[2];
+    }
+  }
+
+  if(typeof(blockParameter) === "undefined" || blockParameter === null) {
+    blockParameter = '';
+  }
+
   var id = this.uuidv4();
   var language = 'markdown';
   var match = this.codeLanguageRegexp.exec(blockText);
@@ -71,8 +98,7 @@ DocDriven.prototype.addBlock = function(document, blockText) {
     if(match.length==2) {
       language = '';
       blockText = match[1];
-    }
-    if(match.length==3) {
+    } else if(match.length==3) {
       language = match[1];
       blockText = match[2];
     }
@@ -81,6 +107,7 @@ DocDriven.prototype.addBlock = function(document, blockText) {
   document.blocks[id] = {
     id: id,
     codeBlock: codeBlock,
+    blockParameter: blockParameter,
     language: language,
     content: blockText
   }
@@ -120,7 +147,7 @@ DocDriven.prototype.render = function (document) {
         endBlock = '\n```';
       }
       return startBlock + block.content + endBlock;
-    }).join('\n[//]: # (block)\n')
+    }).join('\n[//]: # (block)')
   ].join('\n');
 }
 

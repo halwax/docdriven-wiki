@@ -49,7 +49,11 @@ Vue.component('doc-block-markdown', {
   props: ['show', 'block', 'isInEditMode'],
   computed: {
     compiledMarkdown: function () {
-      return window.markdownit().render(this.block.content)
+      var markdown = this.block.content;
+      if(this.block.codeBlock) {
+        markdown =  '```' + this.block.language + '\n' + markdown + '\n```';
+      }
+      return window.markdownit().render(markdown);
     }
   },
   methods: {
