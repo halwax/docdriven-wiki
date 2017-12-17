@@ -16,10 +16,6 @@ public class DocController {
 	private static final String README_MD_FILE = "README.md";
 	private String content = "# Content";
 
-	public DocController() throws IOException {
-		content = readFromFile();
-	}
-
 	@PostMapping("/document")
 	public void postDocument(@RequestBody String content) throws IOException {
 		this.content = content;
@@ -27,8 +23,8 @@ public class DocController {
 	}
 
 	@GetMapping("/document")
-	public String getDocument() {
-		return content;
+	public String getDocument() throws IOException {
+		return readFromFile();
 	}
 
 	protected void writeToFile(String content) throws IOException {

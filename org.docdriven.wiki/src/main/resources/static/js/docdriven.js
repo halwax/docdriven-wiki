@@ -60,8 +60,8 @@ DocDriven.prototype.parse = function (string) {
   // use positive lookahead (?=...) to keep the block starting line
   // in the split result to be able to extract the optional block
   // parameter
-  
-  _.forEach(content.split(/(?:\r?\n)?(?=\[\/\/\]: # \(block(:.+?)?\)(?:\r?\n)?)/), function(blockText) {
+
+  _.forEach(content.split(/(?:\r?\n)?(?=\[\/\/\]: # \(block(?:.+?)?\)(?:\r?\n)?)/), function(blockText) {
     docDriven.addBlock(document, blockText);
   })
   return document;
@@ -86,13 +86,15 @@ DocDriven.prototype.addBlock = function(document, blockText) {
 
   if(typeof(blockParameter) === "undefined" || blockParameter === null) {
     blockParameter = '';
+  } else {
+    blockParameter = blockParameter.substring(1);
   }
 
   var id = this.uuidv4();
   var language = 'markdown';
-  var match = this.codeLanguageRegexp.exec(blockText);
   var codeBlock = false;
 
+  var match = this.codeLanguageRegexp.exec(blockText);
   if(match && match.index == 0) {
     codeBlock = true;
     if(match.length==2) {
@@ -109,8 +111,9 @@ DocDriven.prototype.addBlock = function(document, blockText) {
     codeBlock: codeBlock,
     blockParameter: blockParameter,
     language: language,
-    content: blockText
+    content: blockText,
   }
+
   document.blockOrder.push(id);
   return document;
 }
@@ -138,7 +141,9 @@ DocDriven.prototype.render = function (document) {
     '---',
     jsyaml.safeDump(document.meta),
     '---',
-    _.map(document.blockOrder, function(id) {
+    _.map(document.blockOrder, function(id, index) {
+
+      
       var block = document.blocks[id];
       var startBlock = '';
       var endBlock = '';
@@ -146,8 +151,19 @@ DocDriven.prototype.render = function (document) {
         startBlock = '```' + block.language + '\n';
         endBlock = '\n```';
       }
-      return startBlock + block.content + endBlock;
-    }).join('\n[//]: # (block)')
+      
+      var renderedBlock = startBlock + block.content + endBlock;
+
+      if(index!==0 || !block.codeBlock || block.blockParameter !== '') {
+        var renderedBlockParameter = ''
+        if(block.blockParameter !== '') {
+          renderedBlockParameter = ':' + block.blockParameter;
+        }
+        renderedBlock = '[//]: # (block' + renderedBlockParameter + ')\n' + renderedBlock;
+      }
+
+      return renderedBlock;
+    }).join('\n')
   ].join('\n');
 }
 

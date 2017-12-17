@@ -38,12 +38,20 @@ Vue.component('doc-editable',{
  */
 Vue.component('doc-block-markdown', {
   template: [
-    '<div',
-    ' v-bind:class="{ \'doc-editable\': isInEditMode }"',
-    ' v-show="show"',
-    ' v-html="compiledMarkdown"',
-    ' @click="onDivClick"',
-    '>',
+    '<div v-show="show">',
+    ' <div class="doc-block-toolbar">',
+    '   <i class="fa fa-play-circle-o fa-lg doc-selectable"',
+    '     v-show="isExecutable"',
+    '     aria-hidden="true"',
+    '     @click="executeCode"',
+    '   />',
+    ' </div>',
+    ' <div',
+    '   v-bind:class="{ \'doc-editable\': isInEditMode }"',
+    '   v-html="compiledMarkdown"',
+    '   @click="onDivClick"',
+    ' >',
+    ' </div>',
     '</div>'
   ].join('\n'),
   props: ['show', 'block', 'isInEditMode'],
@@ -51,9 +59,25 @@ Vue.component('doc-block-markdown', {
     compiledMarkdown: function () {
       var markdown = this.block.content;
       if(this.block.codeBlock) {
-        markdown =  '```' + this.block.language + '\n' + markdown + '\n```';
+        markdown =  '```' + 
+          this.block.language + '\n' +
+          markdown + '\n' +
+          '```';
       }
-      return window.markdownit().render(markdown);
+      return window.markdownit({
+        highlight: function (str, lang) {
+          if (lang && hljs.getLanguage(lang)) {
+            try {
+              return hljs.highlight(lang, str).value;
+            } catch (__) {}
+          }
+      
+          return ''; // use external default escaping
+        }        
+      }).render(markdown);
+    },
+    isExecutable: function() {
+      return this.block.blockParameter === 'executable';
     }
   },
   methods: {
@@ -61,6 +85,10 @@ Vue.component('doc-block-markdown', {
       if(this.isInEditMode) {
         this.$emit('activateBlockEditMode');
       }
+    },
+    executeCode: function(e) {
+      var result = new Function(this.block.content)();
+      alert(result);
     }
   }
 });
@@ -81,7 +109,12 @@ Vue.component('doc-block-toolbar', {
  * Moncao Editor Component
  */
 Vue.component('doc-block-editor', {
-  template : '<div style="width:100%;height:400px" class="doc-editable" v-show="show"></div>',
+  template : 
+  [
+    '<div v-show="show">',
+    ' <div id="editor" style="width:100%;height:400px" class="doc-editable"/>',
+    '</div>'
+  ].join('\n'),
   props: ['show', 'block', 'windowWidth'],
   watch: {
     windowWidth: function(newWindowWidth) {
@@ -104,6 +137,7 @@ Vue.component('doc-block-editor', {
       return {
         value: this.block.content,
         language: this.block.language
+        //, theme: 'vs-dark'
       };
     }
   },
@@ -115,7 +149,7 @@ Vue.component('doc-block-editor', {
       require(['vs/editor/editor.main'], this.createMonaco);
     },
     createMonaco: function() {
-      this.editor = window.monaco.editor.create(this.$el, this.editorOptions);
+      this.editor = window.monaco.editor.create(this.$el.querySelector('#editor'), this.editorOptions);
       var triggerChangeContent = this.triggerChangeContent;
       this.editor.onDidChangeModelContent(function(e){
         triggerChangeContent(e);
