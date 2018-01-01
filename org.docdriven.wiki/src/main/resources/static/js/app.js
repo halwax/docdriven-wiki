@@ -47,14 +47,23 @@ Vue.component('doc-block-markdown', {
     '   />',
     ' </div>',
     ' <div',
-    '   v-bind:class="{ \'doc-editable\': isInEditMode }"',
+    '   v-bind:class="{ \'doc-editable\': isInEditMode , \'doc-markdown\': true}"',
     '   v-html="compiledMarkdown"',
     '   @click="onDivClick"',
     ' >',
     ' </div>',
+    ' <div v-show="executed && !isInEditMode" class="doc-markdown">',
+    '   <pre><code class="language-json" v-html="executionResult"/></pre>',
+    ' </div>',
     '</div>'
   ].join('\n'),
   props: ['show', 'block', 'isInEditMode'],
+  data : function() {
+    return {
+      executionResult : '',
+      executed : false
+    }
+  },
   computed: {
     compiledMarkdown: function () {
       var markdown = this.block.content;
@@ -88,7 +97,8 @@ Vue.component('doc-block-markdown', {
     },
     executeCode: function(e) {
       var result = new Function(this.block.content)();
-      alert(result);
+      this.executionResult = hljs.highlight('json', JSON.stringify(result, null, 2)).value;
+      this.executed = true;
     }
   }
 });

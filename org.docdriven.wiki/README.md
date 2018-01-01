@@ -73,8 +73,10 @@ function() {
 - StackEdit - <https://stackedit.io/>
 - Markdeep - <https://casual-effects.com/markdeep/>
 - <https://opensource.com/life/15/8/markup-lowdown>
-
 [//]: # (block:executable)
 ```javascript
-return 'test';
+var obj = {
+    test: true
+};
+return obj;
 ```
