@@ -39,21 +39,24 @@ Vue.component('doc-editable',{
 Vue.component('doc-block-markdown', {
   template: [
     '<div v-show="show">',
-    ' <div class="doc-block-toolbar">',
-    '   <i class="fa fa-play-circle-o fa-lg doc-selectable"',
-    '     v-show="isExecutable"',
-    '     aria-hidden="true"',
-    '     @click="executeCode"',
-    '   />',
-    ' </div>',
-    ' <div',
-    '   v-bind:class="{ \'doc-editable\': isInEditMode , \'doc-markdown\': true}"',
-    '   v-html="compiledMarkdown"',
-    '   @click="onDivClick"',
-    ' >',
+    ' <div :class="{\'doc-block-code\' : block.codeBlock, \'doc-block-markdown\' : !block.codeBlock}">',
+    '   <div class="doc-block-layout">',
+    '     <div',
+    '       v-bind:class="{ \'doc-editable\': isInEditMode , \'doc-markdown\': true}"',
+    '       v-html="compiledMarkdown"',
+    '       @click="onDivClick"',
+    '     />',
+    '     <div class="doc-block-toolbar"',
+    '      v-show="isExecutable && !isInEditMode">',
+    '       <i class="fa fa-play-circle-o fa-lg doc-selectable"',
+    '        aria-hidden="true"',
+    '        @click="executeCode"',
+    '       />',
+    '     </div>',
+    '   </div>',
     ' </div>',
     ' <div v-show="executed && !isInEditMode" class="doc-markdown">',
-    '   <pre><code class="language-json" v-html="executionResult"/></pre>',
+    '   <pre class="doc-block-code"><code class="language-json" v-html="executionResult"/></pre>',
     ' </div>',
     '</div>'
   ].join('\n'),
@@ -68,10 +71,17 @@ Vue.component('doc-block-markdown', {
     compiledMarkdown: function () {
       var markdown = this.block.content;
       if(this.block.codeBlock) {
+        /*
         markdown =  '```' + 
           this.block.language + '\n' +
           markdown + '\n' +
           '```';
+        */
+        try {
+          return '<pre><code>' + 
+            hljs.highlight(this.block.language, this.block.content).value + 
+            '</code></pre>';
+        } catch (__) {}
       }
       return window.markdownit({
         highlight: function (str, lang) {
@@ -122,19 +132,17 @@ Vue.component('doc-block-editor', {
   template : 
   [
     '<div v-show="show">',
-    ' <div id="editor" style="width:100%;height:400px" class="doc-editable"/>',
+    ' <div id="editor" style="height:400px" class="doc-editable"/>',
     '</div>'
   ].join('\n'),
   props: ['show', 'block', 'windowWidth'],
   watch: {
     windowWidth: function(newWindowWidth) {
-      if(this.editor) {
-        this.editor.layout();
-      }
+      this.layout();
     }
   },
   updated: function() {
-    this.editor.layout();
+    this.layout();
   },
   mounted: function() {
     this.loadMonaco();
@@ -146,7 +154,8 @@ Vue.component('doc-block-editor', {
     editorOptions: function() {
       return {
         value: this.block.content,
-        language: this.block.language
+        language: this.block.language,
+        scrollBeyondLastLine: false
         //, theme: 'vs-dark'
       };
     }
@@ -164,6 +173,7 @@ Vue.component('doc-block-editor', {
       this.editor.onDidChangeModelContent(function(e){
         triggerChangeContent(e);
       });
+      this.layout();
     },
     triggerChangeContent: _.debounce(function (e) {
       var content = this.editor.getValue();
@@ -176,6 +186,11 @@ Vue.component('doc-block-editor', {
     destroyMonaco: function() {
       if (typeof this.editor !== 'undefined') {
         this.editor.dispose();
+      }
+    },
+    layout: function() {
+      if(this.editor) {
+        this.editor.layout();
       }
     }
   }  
@@ -221,12 +236,12 @@ Vue.component('doc-header',{
     '<div>',
     ' <!-- Header Section -->',
     ' <div class="doc-header">',
+    '   <h1 class="doc-title"><doc-editable :active="isInEditMode" :content="document.meta.title" @update="updateTitle"/></h1>',
     '   <div class="doc-toolbar">',
     '    <i class="fa fa-download fa-lg doc-selectable"></i>',
     '    <i class="fa fa-eye fa-lg doc-selectable" v-show="isInEditMode" @click="switchEditMode"></i>',
     '    <i class="fa fa-pencil-square-o fa-lg doc-selectable" v-show="!isInEditMode" @click="switchEditMode"></i>',
     '   </div>',
-    '   <h1><doc-editable :active="isInEditMode" :content="document.meta.title" @update="updateTitle"/></h1>',
     ' </div>',  
     ' <div class="doc-metainfo">',
     '  <p>',
@@ -249,31 +264,72 @@ Vue.component('doc-header',{
   }
 })
 
+Vue.component('doc-breadcrumbs', {
+  template: [
+    '<div class="doc-breadcrumb" >',
+    '  <a v-for="breadcrumb in toBreadcrumbs(hashPath)" :href="breadcrumb.href"><span>{{breadcrumb.name}}</span></a>',
+    '</div>'
+  ].join('\n'),
+  props:['hashPath'],
+  methods: {
+    toBreadcrumbs : function(hashPath) {
+      var result = [{
+        href: '#',
+        name: 'wiki'
+      }];
+      if((hashPath!==null || hashPath!==undefined) && hashPath!=='') {
+        var breadcrumbs = hashPath.split('/')
+        for(var i=0; i < breadcrumbs.length; i++) {
+          var breadcrumbName = breadcrumbs[i];
+          if(breadcrumbName.length>0 && breadcrumbName.charAt(0) == '#') {
+            breadcrumbName = breadcrumbName.slice(1, breadcrumbName.length)
+          }
+          var hrefBreadcrumb = breadcrumbs.slice(0,i+1).join('/');
+          result.push({
+            href: hrefBreadcrumb,
+            name: breadcrumbName
+          })
+        }        
+      }
+      return result;
+    }
+  }
+})
+
 /**
  * Main Component which manages a Document in a Wiki-like way.
  */
 Vue.component('doc-wiki', {
   template: [
-    '<div>',
-    ' <doc-header v-bind:document="document"',
-    '   :isInEditMode="isInEditMode"',
-    '   @switchEditMode="switchEditMode"',
-    '   @updateTitle="updateTitle"',
-    '   @updateSummary="updateSummary"',
-    ' />',
-    ' <div class="doc-content">',
-    '  <doc-block v-for="blockId in document.blockOrder" :key="blockId"',
-    '     :windowWidth="windowWidth"',
-    '     :isInEditMode="isInEditMode"',
-    '     :blocksInEditMode="document.blocksInEditMode"',
-    '     :block="document.blocks[blockId]"',
-    '     @blockChanged="changeBlock"',
-    '     @activateBlockEditMode="triggerBlockEditMode"',
-    '  />',
-    ' </div>',
+    '<div class="doc-wiki">',
+    ' <header>',
+    '   <doc-breadcrumbs :hashPath="hashPath"/>',
+    ' </header>',
+    ' <main>',
+    '   <nav>',
+    '   </nav>',
+    '   <div class="doc-body">',
+    '     <doc-header :document="document"',
+    '       :isInEditMode="isInEditMode"',
+    '       @switchEditMode="switchEditMode"',
+    '       @updateTitle="updateTitle"',
+    '       @updateSummary="updateSummary"',
+    '     />',
+    '     <div class="doc-content">',
+    '       <doc-block v-for="blockId in document.blockOrder" :key="blockId"',
+    '         :windowWidth="windowWidth"',
+    '         :isInEditMode="isInEditMode"',
+    '         :blocksInEditMode="document.blocksInEditMode"',
+    '         :block="document.blocks[blockId]"',
+    '         @blockChanged="changeBlock"',
+    '         @activateBlockEditMode="triggerBlockEditMode"',
+    '       />',
+    '     </div>',
+    '   </div>',
+    ' </main>',
     '</div>'
   ].join('\n'),
-  props: ['windowWidth'],
+  props: ['windowWidth','hashPath'],
   data: function() { 
     return {
       isInEditMode: false,
@@ -286,6 +342,11 @@ Vue.component('doc-wiki', {
         blockOrder: [],
         blocks: {}
       }
+    }
+  },
+  watch: {
+    hashPath: function(newHashPath, oldHashPath) {
+      this.reloadContent();
     }
   },
   mounted: function() {
@@ -308,7 +369,10 @@ Vue.component('doc-wiki', {
         docWiki.document.blockOrder.push(id);        
       })
       this.document.blocksInEditMode = [];
-      this.document.meta = document.meta;
+      var title = document.meta.title;
+      this.document.meta.title = _.isNil(title)? '' : title;
+      var summary = document.meta.summary;
+      this.document.meta.summary = _.isNil(summary)? '' : summary;
     },
     updateTitle: function(title) {
       this.document.meta.title = title;
@@ -323,17 +387,35 @@ Vue.component('doc-wiki', {
       this.document.blocksInEditMode.push(block.id);
     },
     autoSaveContent: _.debounce(function () {
-      axios.post('/document', docDriven.render(this.document), {
+      var path = this.getDocResourcePath()
+      axios.post('/document' + path, docDriven.render(this.document), {
         headers: {
           'Content-Type': 'application/json',
         }
       })
     }, 500),
     loadContent: function() {
+      var path = this.getDocResourcePath()
       var initContent = this.initContent;
-      axios.get('/document').then(function (response) {
+      axios.get('/document' + path).then(function (response) {
         initContent(response.data);
       })
+    },
+    reloadContent: _.debounce(function() {
+      this.loadContent();
+    }, 500),
+    getDocResourcePath: function() {
+      var path = window.location.hash;
+      if(path===null || path===undefined) {
+        path = ''
+      }
+      if(_.startsWith(path,'#')) {
+        path = path.substring(1,path.length);
+      }
+      if(path.length>0) {
+        path = '/' + path;
+      }
+      return path;
     }
   }
 })
@@ -343,13 +425,16 @@ new Vue({
   data: function() { 
     return {
       windowWidth: 0,
-      windowHeight: 0
+      windowHeight: 0,
+      hashPath: window.location.hash
     }
   },
   mounted() {
+
     this.$nextTick(function() {
       window.addEventListener('resize', this.loadWindowWidth);
       window.addEventListener('resize', this.loadWindowHeight);
+      window.addEventListener('hashchange', this.changeHashPath);
 
       //Init
       this.loadWindowWidth()
@@ -364,6 +449,9 @@ new Vue({
     }, 300),    
     loadWindowHeight: _.debounce(function(event) {
       this.windowHeight = document.documentElement.clientHeight;
+    }, 300),
+    changeHashPath: _.debounce(function(event) {
+      this.hashPath = window.location.hash;
     }, 300)
   },
   beforeDestroy() {

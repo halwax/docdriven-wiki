@@ -9,8 +9,67 @@ input, select, textarea, button{
   font-family: inherit;
 }
 
+header {
+  padding-bottom: 1em;
+  border-bottom: 2px solid;
+}
+
+nav, main {
+  display: flex;
+}
+
+.doc-body {
+  /* 
+   * explicitly allow content to shrink below their min-content size
+   * necessary due to the "implied minimum size of flex items" feature
+   */
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+nav {
+  flex-direction: column;
+  padding-top: 1em;
+  margin-right: 10px;
+  border-right: 2px solid;
+}
+
+nav > a {
+  padding: 5px 15px;
+  margin-bottom: 1em;
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
+  text-decoration: none;
+  color: darkgray;
+}
+
+.doc-breadcrumb a {
+  text-decoration: none;
+  font-weight: bold;
+  color: black;
+}
+.doc-breadcrumb a:after {
+  content: " /";
+}
+.doc-breadcrumb a:first-child:before {
+  content: " » ";
+}
+.doc-breadcrumb a:last-child:after {
+  content: "";
+}
+.doc-breadcrumb span {
+  text-decoration: underline;
+}
+
 .doc-header {
   border-bottom: solid 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.doc-title {
+  flex: 1 1 0;
 }
 
 .doc-metainfo {
@@ -41,7 +100,8 @@ input, select, textarea, button{
 
 .doc-selectable {
   cursor: pointer;
-  margin-right: 1em;
+  margin-right: 0.25em;
+  margin-left: 0.25em
 }
 
 .doc-selectable:hover {
@@ -58,10 +118,28 @@ input, select, textarea, button{
   margin-bottom: 0.5em;
 }
 
-.doc-markdown pre {
+.doc-block-markdown pre {
   padding: 1em;
   background-color:#f2f4f5;
   border-radius: 3px;
+}
+
+.doc-block-code {
+  padding: 1em;
+  background-color:#f2f4f5;
+  border-radius: 3px;
+}
+
+.doc-block-code pre {
+  margin: 0;
+}
+
+.doc-markdown {
+  flex: 1 1 0;
+}
+
+.doc-block-layout {
+  display: flex;
 }
 
 .monaco-editor.vs .line-numbers {
