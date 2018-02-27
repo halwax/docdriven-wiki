@@ -6,8 +6,8 @@ summary: 'Documentation, Inspiration and Concepts behind Doc Driven Wiki.'
 [//]: # (block)
 ## Abstract
 
-Documentation often gets out of sync and is spread alonge many locations in multiple versions.
-This project intends to provide some tools, concepts and ideas to better provide up to date
+Documentation often gets out of sync and is spread along many locations in multiple versions.
+This project intends to provide tools, concepts and ideas to better provide up to date
 and consistent documentation in a structured way.
 
 ## Structure
@@ -38,6 +38,9 @@ Example <https://ant.design/components/list/> :
 - Kajero - <http://www.joelotter.com/kajero/>
 - Markdeep - <https://casual-effects.com/markdeep/>
 - API Notebook - <https://api-notebook.anypoint.mulesoft.com/>
+- Daux.io - <https://daux.io>
+- MDBook - <https://github.com/rust-lang-nursery/mdBook>
+- Gitbook - <https://www.gitbook.com>
 
 ## Technical Base
 

@@ -11,7 +11,7 @@ input, select, textarea, button{
 
 header {
   padding-bottom: 1em;
-  border-bottom: 2px solid;
+  background: #fafafa;
 }
 
 nav, main {
@@ -31,7 +31,7 @@ nav {
   flex-direction: column;
   padding-top: 1em;
   margin-right: 10px;
-  border-right: 2px solid;
+  background: #fafafa;
 }
 
 nav > a {
@@ -49,7 +49,7 @@ nav > a {
   color: black;
 }
 .doc-breadcrumb a:after {
-  content: " /";
+  content: " ";
 }
 .doc-breadcrumb a:first-child:before {
   content: " » ";
@@ -145,3 +145,22 @@ nav > a {
 .monaco-editor.vs .line-numbers {
   color: darkgray ;
 }
+
+.doc-project-info {
+  border-radius: 3px;
+  border: solid 1px black;
+  padding: 1em;
+  display: flex;
+}
+
+.doc-project-info-title {
+  flex: 1 1 0;
+}
+
+.doc-project-info-title a {
+  text-decoration: none;
+  font-weight: bold;
+  color: black;
+  text-decoration: underline;
+}
+

@@ -1,4 +1,4 @@
-require.config({ paths: { 'vs': 'monaco-editor/min/vs' }});
+require.config({ paths: { 'vs': '/monaco-editor/min/vs' }});
 
 var docDriven = new DocDriven();
 
@@ -264,37 +264,9 @@ Vue.component('doc-header',{
   }
 })
 
-Vue.component('doc-breadcrumbs', {
-  template: [
-    '<div class="doc-breadcrumb" >',
-    '  <a v-for="breadcrumb in toBreadcrumbs(hashPath)" :href="breadcrumb.href"><span>{{breadcrumb.name}}</span></a>',
-    '</div>'
-  ].join('\n'),
-  props:['hashPath'],
-  methods: {
-    toBreadcrumbs : function(hashPath) {
-      var result = [{
-        href: '#',
-        name: 'wiki'
-      }];
-      if((hashPath!==null || hashPath!==undefined) && hashPath!=='') {
-        var breadcrumbs = hashPath.split('/')
-        for(var i=0; i < breadcrumbs.length; i++) {
-          var breadcrumbName = breadcrumbs[i];
-          if(breadcrumbName.length>0 && breadcrumbName.charAt(0) == '#') {
-            breadcrumbName = breadcrumbName.slice(1, breadcrumbName.length)
-          }
-          var hrefBreadcrumb = breadcrumbs.slice(0,i+1).join('/');
-          result.push({
-            href: hrefBreadcrumb,
-            name: breadcrumbName
-          })
-        }        
-      }
-      return result;
-    }
-  }
-})
+function initWikiData() {
+  
+}
 
 /**
  * Main Component which manages a Document in a Wiki-like way.
@@ -303,7 +275,7 @@ Vue.component('doc-wiki', {
   template: [
     '<div class="doc-wiki">',
     ' <header>',
-    '   <doc-breadcrumbs :hashPath="hashPath"/>',
+    '   <doc-breadcrumbs :path="path"/>',
     ' </header>',
     ' <main>',
     '   <nav>',
@@ -329,7 +301,7 @@ Vue.component('doc-wiki', {
     ' </main>',
     '</div>'
   ].join('\n'),
-  props: ['windowWidth','hashPath'],
+  props: ['windowWidth','path'],
   data: function() { 
     return {
       isInEditMode: false,
@@ -345,7 +317,7 @@ Vue.component('doc-wiki', {
     }
   },
   watch: {
-    hashPath: function(newHashPath, oldHashPath) {
+    path: function(newPath, oldPath) {
       this.reloadContent();
     }
   },
@@ -364,6 +336,7 @@ Vue.component('doc-wiki', {
     initContent: function(content) {
       var document = docDriven.extract(content);
       var docWiki = this;
+      Object.assign(this.$data, this.$options.data.call(this));
       _.forEach(document.blockOrder, function(id) {
         docWiki.$set(docWiki.document.blocks, id, document.blocks[id]);
         docWiki.document.blockOrder.push(id);        
@@ -388,7 +361,7 @@ Vue.component('doc-wiki', {
     },
     autoSaveContent: _.debounce(function () {
       var path = this.getDocResourcePath()
-      axios.post('/document' + path, docDriven.render(this.document), {
+      axios.post('/api/docs' + path, docDriven.render(this.document), {
         headers: {
           'Content-Type': 'application/json',
         }
@@ -397,7 +370,7 @@ Vue.component('doc-wiki', {
     loadContent: function() {
       var path = this.getDocResourcePath()
       var initContent = this.initContent;
-      axios.get('/document' + path).then(function (response) {
+      axios.get('/api/docs' + path).then(function (response) {
         initContent(response.data);
       })
     },
@@ -405,15 +378,11 @@ Vue.component('doc-wiki', {
       this.loadContent();
     }, 500),
     getDocResourcePath: function() {
-      var path = window.location.hash;
-      if(path===null || path===undefined) {
-        path = ''
-      }
-      if(_.startsWith(path,'#')) {
-        path = path.substring(1,path.length);
-      }
-      if(path.length>0) {
-        path = '/' + path;
+      var path = window.location.pathname + window.location.hash;
+      path = _.replace(path, /#/g, "/");
+      path = _.replace(path, /\/\//g, "/");
+      if(!_.startsWith(path,'/projects')) {
+        return '/projects/wiki' + path;
       }
       return path;
     }
@@ -426,7 +395,7 @@ new Vue({
     return {
       windowWidth: 0,
       windowHeight: 0,
-      hashPath: window.location.hash
+      path: window.location.pathname + window.location.hash
     }
   },
   mounted() {
@@ -434,7 +403,7 @@ new Vue({
     this.$nextTick(function() {
       window.addEventListener('resize', this.loadWindowWidth);
       window.addEventListener('resize', this.loadWindowHeight);
-      window.addEventListener('hashchange', this.changeHashPath);
+      window.addEventListener('hashchange', this.changePath);
 
       //Init
       this.loadWindowWidth()
@@ -450,8 +419,8 @@ new Vue({
     loadWindowHeight: _.debounce(function(event) {
       this.windowHeight = document.documentElement.clientHeight;
     }, 300),
-    changeHashPath: _.debounce(function(event) {
-      this.hashPath = window.location.hash;
+    changePath: _.debounce(function(event) {
+      this.path = window.location.pathname + window.location.hash;
     }, 300)
   },
   beforeDestroy() {

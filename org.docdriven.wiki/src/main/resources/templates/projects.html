@@ -4,7 +4,7 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
   
-  <title>Doc Driven Wiki</title>
+  <title>Explore Projects</title>
    
   <link href="https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300" rel="stylesheet"/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/simple-line-icons/2.4.1/css/simple-line-icons.css" />
@@ -16,21 +16,16 @@
 
 <body>
 
-  <div class="wiki-app">
-    <doc-wiki v-bind:window-width="windowWidth" v-bind:path="path"/>
+  <div class="projects-app">
+    <doc-projects/>
   </div>
   
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-  <script src="https://unpkg.com/markdown-it@8.4.0/dist/markdown-it.min.js"></script>
   <script src="https://unpkg.com/lodash@4.16.0"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/3.10.0/js-yaml.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
   <script src="https://unpkg.com/vue@2.5.3"></script>
-  <script src="monaco-editor/min/vs/loader.js"></script>
-  <script src="vizjs/viz-lite.js"></script>
-  <script src="js/docdriven.js"></script>
   <script src="js/components/breadcrumbs.js"></script>
-  <script src="js/wikiApp.js"></script>
+  <script src="js/projectsApp.js"></script>
  
 </body>
 </html>
