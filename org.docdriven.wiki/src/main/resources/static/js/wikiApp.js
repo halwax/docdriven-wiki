@@ -60,7 +60,7 @@ Vue.component('doc-block-markdown', {
     ' </div>',
     '</div>'
   ].join('\n'),
-  props: ['show', 'block', 'isInEditMode'],
+  props: ['show', 'block', 'isInEditMode', 'path'],
   data : function() {
     return {
       executionResult : '',
@@ -69,6 +69,7 @@ Vue.component('doc-block-markdown', {
   },
   computed: {
     compiledMarkdown: function () {
+      var path = this.path;
       var markdown = this.block.content;
       if(this.block.codeBlock) {
         /*
@@ -83,7 +84,7 @@ Vue.component('doc-block-markdown', {
             '</code></pre>';
         } catch (__) {}
       }
-      return window.markdownit({
+      var md = window.markdownit({
         highlight: function (str, lang) {
           if (lang && hljs.getLanguage(lang)) {
             try {
@@ -92,8 +93,23 @@ Vue.component('doc-block-markdown', {
           }
       
           return ''; // use external default escaping
-        }        
-      }).render(markdown);
+        },
+        replaceLink: function (link, env) {
+          var linkFolderPath = path;
+          if(path.includes('#')) {
+            var hashIndex = path.indexOf('#');
+            linkFolderPath = path.slice(0,hashIndex);
+            var hashPath = path.slice(hashIndex+1,path.length)
+            var lastHashPathSegment = _.last(hashPath.split('/'));
+            if(hashPath.length!==lastHashPathSegment.length) {
+              hashPath = hashPath.slice(0, hashPath.length - (lastHashPathSegment.length+1));
+            }
+            linkFolderPath = linkFolderPath + '/' + hashPath;
+          }
+          return '/api/files' + linkFolderPath + '/' + link;
+        }      
+      }).use(markdownitReplaceLink);
+      return md.render(markdown);
     },
     isExecutable: function() {
       return this.block.blockParameter === 'executable';
@@ -234,11 +250,12 @@ Vue.component('doc-block', {
     '   :show="!isBlockInEditMode()"',
     '   :isInEditMode="isInEditMode"',
     '   :block="block"',
+    '   :path="path"',
     '   @activateBlockEditMode="triggerBlockEditMode"',
     '  />',
     '</div>'
   ].join('\n'),
-  props: ['isInEditMode', 'blocksInEditMode', 'windowWidth', 'block', 'first', 'last'],
+  props: ['isInEditMode', 'blocksInEditMode', 'windowWidth', 'block', 'first', 'last', 'path'],
   methods: {
     triggerChangeBlock: function(content) {
       this.$emit('blockChanged', content);
@@ -322,6 +339,7 @@ Vue.component('doc-wiki', {
     '         :block="document.blocks[blockId]"',
     '         :first="document.blockOrder.indexOf(blockId)===0"',
     '         :last="document.blockOrder.indexOf(blockId)===(document.blockOrder.length-1)"',
+    '         :path="path"',
     '         @blockChanged="changeBlock"',
     '         @changeBlockOrder="changeBlockOrder"',
     '         @activateBlockEditMode="triggerBlockEditMode"',
