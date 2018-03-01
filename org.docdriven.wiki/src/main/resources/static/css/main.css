@@ -98,10 +98,16 @@ nav > a {
   text-align: right;
 }
 
+.doc-selectable-disabled {
+  margin-right: 0.25em;
+  margin-left: 0.25em;
+  color: gray;
+}
+
 .doc-selectable {
   cursor: pointer;
   margin-right: 0.25em;
-  margin-left: 0.25em
+  margin-left: 0.25em;
 }
 
 .doc-selectable:hover {

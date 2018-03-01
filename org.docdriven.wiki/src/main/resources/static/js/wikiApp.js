@@ -116,13 +116,32 @@ Vue.component('doc-block-markdown', {
 Vue.component('doc-block-toolbar', {
 	template: [
     '<div class="doc-block-toolbar" v-show="show">',
-    ' <i class="fa-file-code-o fa doc-selectable"></i>',
-    ' <i class="fa-file-text-o fa doc-selectable"></i>',
-    ' <i class="fa-arrow-down fa doc-selectable"></i>',
-    ' <i class="fa-arrow-up fa doc-selectable"></i>',
+    ' <i :class="toolbarIconClasses(\'fa-file-code-o\', true)" @click="changeBlockOrder(\'newCodeBlock\')"></i>',
+    ' <i :class="toolbarIconClasses(\'fa-file-text-o\', true)" @click="changeBlockOrder(\'newMdBlock\')"></i>',
+    ' <i :class="toolbarIconClasses(\'fa-arrow-down\', !last)" @click="changeBlockOrder(\'moveBlockDown\')"></i>',
+    ' <i :class="toolbarIconClasses(\'fa-arrow-up\', !first)" @click="changeBlockOrder(\'moveBlockUp\')"></i>',
+    ' <i :class="toolbarIconClasses(\'fa-trash\', !(last && first))" @click="changeBlockOrder(\'deleteBlock\')"></i>',
     '</div>'
     ].join('\n'),
-    props: ['show']
+    props: ['show','first','last'],
+    methods: {
+      toolbarIconClasses: function(faClass, enable) {
+        var classObj = {
+          'fa' : true,
+          'doc-selectable' : true,
+          'doc-selectable-disabled': false
+        };
+        classObj[faClass] = true;
+        if(!enable) {
+          classObj['doc-selectable'] = false;
+          classObj['doc-selectable-disabled'] = true;
+        }
+        return classObj;
+      },
+      changeBlockOrder : function(type) {
+        this.$emit('changeBlockOrder', type);
+      }
+    }
 });
 
 /**
@@ -203,7 +222,9 @@ Vue.component('doc-block-editor', {
 Vue.component('doc-block', {
   template: [
   	'<div>',
-  	'  <doc-block-toolbar :show="isInEditMode"/>',
+    '  <doc-block-toolbar :show="isInEditMode" :first="first" :last="last"',
+    '     @changeBlockOrder="changeBlockOrder"',
+    '     />',
     '  <doc-block-editor', 
     '   :show="isBlockInEditMode()"',
     '   :block="block"',
@@ -217,7 +238,7 @@ Vue.component('doc-block', {
     '  />',
     '</div>'
   ].join('\n'),
-  props: ['isInEditMode', 'blocksInEditMode', 'windowWidth', 'block'],
+  props: ['isInEditMode', 'blocksInEditMode', 'windowWidth', 'block', 'first', 'last'],
   methods: {
     triggerChangeBlock: function(content) {
       this.$emit('blockChanged', content);
@@ -227,6 +248,12 @@ Vue.component('doc-block', {
     },
     isBlockInEditMode: function() {
       return _.includes(this.blocksInEditMode, this.block.id);
+    },
+    changeBlockOrder : function(type) {
+      this.$emit('changeBlockOrder', {
+        'type': type,
+        'blockId': this.block.id
+      });
     }
   }
 })
@@ -293,7 +320,10 @@ Vue.component('doc-wiki', {
     '         :isInEditMode="isInEditMode"',
     '         :blocksInEditMode="document.blocksInEditMode"',
     '         :block="document.blocks[blockId]"',
+    '         :first="document.blockOrder.indexOf(blockId)===0"',
+    '         :last="document.blockOrder.indexOf(blockId)===(document.blockOrder.length-1)"',
     '         @blockChanged="changeBlock"',
+    '         @changeBlockOrder="changeBlockOrder"',
     '         @activateBlockEditMode="triggerBlockEditMode"',
     '       />',
     '     </div>',
@@ -324,7 +354,49 @@ Vue.component('doc-wiki', {
   mounted: function() {
     this.loadContent();
   },
+  // moveBlockUp, moveBlockDown, deleteBlock
   methods: {
+    changeBlockOrder: function(changeBlockOrderEvent) {
+      console.log(changeBlockOrderEvent.type + ' ' + changeBlockOrderEvent.blockId);
+      var document = this.document;
+      var blockIndex = document.blockOrder.indexOf(changeBlockOrderEvent.blockId);
+      if('newCodeBlock' === changeBlockOrderEvent.type || 'newMdBlock' === changeBlockOrderEvent.type) {
+
+        var language = 'markdown';
+        var codeBlock = false;
+        if('newCodeBlock' === changeBlockOrderEvent.type) {
+          language = 'javascript';
+          codeBlock = true;
+        }
+
+        var id = docDriven.uuidv4();
+        document.blocks[id] = {
+          id: id,
+          codeBlock: codeBlock,
+          blockParameter: '',
+          language: language,
+          content: '',
+        };
+
+        document.blockOrder.splice(blockIndex, 0, id);
+
+      } else if('moveBlockUp' === changeBlockOrderEvent.type) {
+        var newPositionIndex = blockIndex;
+        if(blockIndex>0) {
+          newPositionIndex--;
+        }
+        document.blockOrder.splice(newPositionIndex, 0, document.blockOrder.splice(blockIndex, 1)[0]);
+      } else if('moveBlockDown' === changeBlockOrderEvent.type) {
+        var newPositionIndex = blockIndex;
+        if(blockIndex<(document.blockOrder.length-1)) {
+          newPositionIndex++;
+        }
+        document.blockOrder.splice(newPositionIndex, 0, document.blockOrder.splice(blockIndex, 1)[0]);
+      } else if('deleteBlock' === changeBlockOrderEvent.type) {
+        document.blockOrder.splice(blockIndex, 1);
+      }
+      this.autoSaveContent();
+    },
     switchEditMode: function() {
       this.isInEditMode = !this.isInEditMode;
       this.document.blocksInEditMode.pop();
