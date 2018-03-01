@@ -95,18 +95,24 @@ Vue.component('doc-block-markdown', {
           return ''; // use external default escaping
         },
         replaceLink: function (link, env) {
-          var linkFolderPath = path;
-          if(path.includes('#')) {
+          var linkPath = path;
+          var fileExtensionPattern = /\.[0-9a-z]+$/i;
+          if(link.match(fileExtensionPattern) && path.includes('#')) {
             var hashIndex = path.indexOf('#');
-            linkFolderPath = path.slice(0,hashIndex);
+            linkPath = path.slice(0,hashIndex);
             var hashPath = path.slice(hashIndex+1,path.length)
             var lastHashPathSegment = _.last(hashPath.split('/'));
             if(hashPath.length!==lastHashPathSegment.length) {
               hashPath = hashPath.slice(0, hashPath.length - (lastHashPathSegment.length+1));
             }
-            linkFolderPath = linkFolderPath + '/' + hashPath;
+            linkPath = '/api/files' + linkPath + '/' + hashPath + '/' + link;
+          } else {
+            if(link.startsWith('./')) {
+              link = link.slice(2,link.length);
+            }
+            linkPath = linkPath + '#' + link;
           }
-          return '/api/files' + linkFolderPath + '/' + link;
+          return linkPath;
         }      
       }).use(markdownitReplaceLink);
       return md.render(markdown);
@@ -466,7 +472,7 @@ Vue.component('doc-wiki', {
     },
     reloadContent: _.debounce(function() {
       this.loadContent();
-    }, 500),
+    }, 200),
     getDocResourcePath: function() {
       var path = window.location.pathname + window.location.hash;
       path = _.replace(path, /#/g, "/");

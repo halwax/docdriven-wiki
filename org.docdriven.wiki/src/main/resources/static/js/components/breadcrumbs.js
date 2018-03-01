@@ -16,8 +16,12 @@ Vue.component('doc-breadcrumbs', {
         name: 'wiki'
       }];
       if((path!==null || path!==undefined) && path!=='') {
+        
         var breadcrumbs = path.split('/');
         for(var i=0; i < breadcrumbs.length; i++) {
+
+          var isLastBreadcrumb = i===(breadcrumbs.length-1);
+
           var breadcrumbName = breadcrumbs[i];
           if(_.isEmpty(breadcrumbName)) {
             continue;
@@ -29,16 +33,17 @@ Vue.component('doc-breadcrumbs', {
             
             var hashIndex = breadcrumbName.indexOf('#');
             
-            var breadcrumbNameWithoutHash = breadcrumbName.slice(0,hashIndex);
-            var hrefBreadcrumbWithoutHash = breadcrumbs.slice(0,i).join('/') + breadcrumbNameWithoutHash;
+            var breadcrumbNameBeforeHash = breadcrumbName.slice(0,hashIndex);
+            var hrefBreadcrumbBeforeHash = breadcrumbs.slice(0,i).join('/') + breadcrumbNameBeforeHash;
 
             result.push({
-              href: hrefBreadcrumbWithoutHash,
-              name: breadcrumbNameWithoutHash
+              // add hash to avoid page reload
+              href: hrefBreadcrumbBeforeHash + '#',
+              name: breadcrumbNameBeforeHash
             })
 
             var breadcrumbNameWithHash = breadcrumbName.slice(hashIndex,breadcrumbName.length);
-            var hrefBreadcrumbWithHash = hrefBreadcrumbWithoutHash + breadcrumbNameWithHash;
+            var hrefBreadcrumbWithHash = hrefBreadcrumbBeforeHash + breadcrumbNameWithHash;
 
             result.push({
               href: hrefBreadcrumbWithHash,
@@ -46,7 +51,13 @@ Vue.component('doc-breadcrumbs', {
             })
 
           } else {
+            
             var hrefBreadcrumb = breadcrumbs.slice(0,i+1).join('/');
+            if(isLastBreadcrumb && !hrefBreadcrumb.includes('#')) {
+              // add hash to last breadcrumb to avoid page reload
+              hrefBreadcrumb = hrefBreadcrumb + '#'
+            }
+
             result.push({
               href: hrefBreadcrumb,
               name: breadcrumbName
