@@ -43,7 +43,7 @@ Vue.component('doc-block-markdown', {
     '   <div class="doc-block-layout">',
     '     <div',
     '       v-bind:class="{ \'doc-editable\': isInEditMode , \'doc-markdown\': true}"',
-    '       v-html="compiledMarkdown"',
+    '       v-html="compiledMarkdown(block)"',
     '       @click="onDivClick"',
     '     />',
     '     <div class="doc-block-toolbar"',
@@ -67,11 +67,21 @@ Vue.component('doc-block-markdown', {
       executed : false
     }
   },
-  computed: {
-    compiledMarkdown: function () {
+  methods: {
+    onDivClick: function(e) {
+      if(this.isInEditMode) {
+        this.$emit('activateBlockEditMode');
+      }
+    },
+    executeCode: function(e) {
+      var result = new Function(this.block.content)();
+      this.executionResult = hljs.highlight('json', JSON.stringify(result, null, 2)).value;
+      this.executed = true;
+    },
+    compiledMarkdown: function (block) {
       var path = this.path;
-      var markdown = this.block.content;
-      if(this.block.codeBlock) {
+      var markdown = block.content;
+      if(block.codeBlock) {
         /*
         markdown =  '```' + 
           this.block.language + '\n' +
@@ -80,7 +90,7 @@ Vue.component('doc-block-markdown', {
         */
         try {
           return '<pre><code>' + 
-            hljs.highlight(this.block.language, this.block.content).value + 
+            hljs.highlight(block.language, block.content).value + 
             '</code></pre>';
         } catch (__) {}
       }
@@ -119,18 +129,6 @@ Vue.component('doc-block-markdown', {
     },
     isExecutable: function() {
       return this.block.blockParameter === 'executable';
-    }
-  },
-  methods: {
-    onDivClick: function(e) {
-      if(this.isInEditMode) {
-        this.$emit('activateBlockEditMode');
-      }
-    },
-    executeCode: function(e) {
-      var result = new Function(this.block.content)();
-      this.executionResult = hljs.highlight('json', JSON.stringify(result, null, 2)).value;
-      this.executed = true;
     }
   }
 });
@@ -286,7 +284,7 @@ Vue.component('doc-header',{
     '<div>',
     ' <!-- Header Section -->',
     ' <div class="doc-header">',
-    '   <h1 class="doc-title"><doc-editable :active="isInEditMode" :content="document.meta.title" @update="updateTitle"/></h1>',
+    '   <h1 class="doc-title">{{document.meta.title}}</h1>',
     '   <div class="doc-toolbar">',
     '    <i class="fa fa-download fa-lg doc-selectable"></i>',
     '    <i class="fa fa-eye fa-lg doc-selectable" v-show="isInEditMode" @click="switchEditMode"></i>',
@@ -295,7 +293,7 @@ Vue.component('doc-header',{
     ' </div>',  
     ' <div class="doc-metainfo">',
     '  <p>',
-    '    <doc-editable :active="isInEditMode" :content="document.meta.summary" @update="updateSummary"/>',
+    '    {{document.meta.summary}}',
     '  </p>',
     ' </div>',
     '</div>',
@@ -381,7 +379,7 @@ Vue.component('doc-wiki', {
   // moveBlockUp, moveBlockDown, deleteBlock
   methods: {
     changeBlockOrder: function(changeBlockOrderEvent) {
-      console.log(changeBlockOrderEvent.type + ' ' + changeBlockOrderEvent.blockId);
+
       var document = this.document;
       var blockIndex = document.blockOrder.indexOf(changeBlockOrderEvent.blockId);
       if('newCodeBlock' === changeBlockOrderEvent.type || 'newMdBlock' === changeBlockOrderEvent.type) {
@@ -426,7 +424,7 @@ Vue.component('doc-wiki', {
       this.document.blocksInEditMode.pop();
     },
     changeBlock: function(changedBlock) {
-      this.document.blocks[changedBlock.id].content = changedBlock.content;
+      this.$set(this.document.blocks[changedBlock.id],'content', changedBlock.content);
       this.autoSaveContent();
     },
     initContent: function(content) {
