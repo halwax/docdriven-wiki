@@ -16,7 +16,7 @@ Vue.component('doc-block-markdown', {
     '       @click="onDivClick"',
     '     />',
     '     <div class="doc-block-toolbar"',
-    '      v-show="isExecutable && !isInEditMode">',
+    '      v-show="isExecutable(block) && !isInEditMode">',
     '       <i class="fa fa-play-circle-o fa-lg doc-selectable"',
     '        aria-hidden="true"',
     '        @click="executeCode"',
@@ -44,7 +44,11 @@ Vue.component('doc-block-markdown', {
     },
     executeCode: function(e) {
       var result = new Function(this.block.content)();
-      this.executionResult = hljs.highlight('json', JSON.stringify(result, null, 2)).value;
+      var jsonResult = '';
+      if(result !== undefined) {
+        jsonResult = JSON.stringify(result, null, 2)
+      }
+      this.executionResult = hljs.highlight('json', jsonResult).value;
       this.executed = true;
     },
     compiledMarkdown: function (block) {
@@ -98,8 +102,8 @@ Vue.component('doc-block-markdown', {
       }).use(markdownitReplaceLink);
       return md.render(markdown);
     },
-    isExecutable: function() {
-      return this.block.blockParameter === 'executable';
+    isExecutable: function(block) {
+      return block.blockParameter === 'executable';
     }
   }
 });
@@ -142,10 +146,28 @@ Vue.component('doc-block-editor', {
   template : 
   [
     '<div v-show="show">',
-    ' <div id="editor" style="height:400px" class="doc-editable"/>',
+    ' <div v-show="configurable" class="doc-block-editor-config">',
+    '   <input class="doc-block-editor-config-language" ',
+    '     v-model="language" placeholder="block language"',
+    '     @blur="changeConfig"',
+    '     >',
+    '   <input class="doc-block-editor-config-parameter"',
+    '     v-model="blockParameter" placeholder="block parameter"',
+    '     @blur="changeConfig"',
+    '     >',
+    ' </div>',
+    ' <div>',
+    '   <div id="editor" style="height:400px" class="doc-editable"/>',
+    ' </div>',
     '</div>'
   ].join('\n'),
-  props: ['show', 'block', 'windowWidth'],
+  props: ['show', 'block', 'windowWidth', 'configurable'],
+  data: function() {
+    return {
+      language: this.block.language,
+      blockParameter: this.block.blockParameter
+    };
+  },
   watch: {
     windowWidth: function(newWindowWidth) {
       this.layout();
@@ -175,9 +197,6 @@ Vue.component('doc-block-editor', {
       };
     }
   },
-  data: function() {
-    return {};
-  },
   methods: {
     loadMonaco: function() {
       require(['vs/editor/editor.main'], this.createMonaco);
@@ -194,7 +213,9 @@ Vue.component('doc-block-editor', {
       var content = this.editor.getValue();
       var changedBlock = {
         id: this.block.id,
-        content: content
+        content: content,
+        blockParameter: this.blockParameter,
+        language: this.language
       }
       this.$emit('blockChanged',changedBlock);
     }, 300),
@@ -207,7 +228,18 @@ Vue.component('doc-block-editor', {
       if(this.editor) {
         this.editor.layout();
       }
-    }
+    },
+    changeConfig: _.debounce(function() {
+      var model = this.editor.getModel();
+      window.monaco.editor.setModelLanguage(model, this.block.language);
+      var changedBlock = {
+        id: this.block.id,
+        content: this.block.content,
+        blockParameter: this.blockParameter,
+        language: this.language
+      }
+      this.$emit('blockChanged',changedBlock);
+    }, 300)
   }  
 })
 
@@ -225,6 +257,7 @@ Vue.component('doc-block', {
     '   :show="isBlockInEditMode(blocksInEditMode)"',
     '   :block="block"',
     '   :windowWidth="windowWidth"',
+    '   :configurable="true"',
     '   @blockChanged="triggerChangeBlock"/>',
     '  <doc-block-markdown',
     '   :show="!isBlockInEditMode(blocksInEditMode)"',
@@ -284,6 +317,7 @@ Vue.component('doc-header',{
     '   <doc-block-editor', 
     '     :show="isBlockInEditMode(document.blocksInEditMode)"',
     '     :block="document.meta"',
+    '     :configurable="false"',
     '     :windowWidth="windowWidth"',
     '     @blockChanged="triggerChangeBlock"/>',
     ' </div>',
@@ -427,6 +461,8 @@ Vue.component('doc-wiki', {
     },
     changeBlock: function(changedBlock) {
       this.$set(this.document.blocks[changedBlock.id],'content', changedBlock.content);
+      this.$set(this.document.blocks[changedBlock.id],'language', changedBlock.language);
+      this.$set(this.document.blocks[changedBlock.id],'blockParameter', changedBlock.blockParameter);
       this.autoSaveContent();
     },
     changeMeta: function(metaBlock) {

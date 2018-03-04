@@ -142,6 +142,27 @@ nav > a {
   border-radius: 3px;
 }
 
+.doc-block-editor-config {
+  display: flex;
+  padding-bottom: 0.5em;
+}
+
+.doc-block-editor-config input {
+  font-size: 0.8em;
+  padding: 0.3em;
+  border-radius: 3px;
+  border: solid 1px black;
+}
+
+.doc-block-editor-config-language {
+  flex: 0 0 12em;
+  margin-right: 0.5em;
+}
+
+.doc-block-editor-config-parameter {
+  flex: 1 1 0;
+}
+
 .doc-block-code pre {
   margin: 0;
 }
