@@ -48,11 +48,10 @@ DocDriven.prototype.parse = function (string) {
     return this.addBlock(this.initDocument(),string)
   }
 
-  var yaml = match[match.length - 1].replace(/^\s+|\s+$/g, '')
-  var meta = jsyaml.load(yaml) || {}
+  var yamlContent = match[match.length - 1].replace(/^\s+|\s+$/g, '')
   var content = string.replace(match[0], '')
 
-  var document = this.setMeta(this.initDocument(),meta)
+  var document = this.setMeta(this.initDocument(),yamlContent)
 
   var blocks = {};
   var blockOrder = [];
@@ -126,9 +125,21 @@ DocDriven.prototype.initDocument = function() {
   }
 }
 
-DocDriven.prototype.setMeta = function(document, meta) {
+DocDriven.prototype.setMeta = function(document, yamlContent) {
+  var meta = this.parseMeta(yamlContent, this.uuidv4());
   document.meta = meta;
   return document;
+}
+
+DocDriven.prototype.parseMeta = function(yamlContent, id) {
+  var meta = jsyaml.load(yamlContent) || {}
+  meta.id = this.uuidv4();
+  meta.codeBlock = true;
+  meta.blockParameter = '';
+  meta.language = 'yaml';
+  meta.content = yamlContent;
+  meta.id = id;
+  return meta;  
 }
 
 DocDriven.prototype.test = function (string) {
@@ -136,11 +147,23 @@ DocDriven.prototype.test = function (string) {
   return this.regex.test(string)
 }
 
-DocDriven.prototype.render = function (document) {
+DocDriven.prototype.renderMeta = function(document) {
+  var meta = _.cloneDeep(document.meta);
+  _.unset(meta, 'id');
+  _.unset(meta, 'codeBlock');
+  _.unset(meta, 'blockParameter');
+  _.unset(meta, 'language');
+  _.unset(meta, 'content');
   return [
     '---',
-    jsyaml.safeDump(document.meta),
-    '---',
+    jsyaml.safeDump(meta),
+    '---'
+  ].join('\n')
+}
+
+DocDriven.prototype.render = function (document) {
+  return [
+    this.renderMeta(document),
     _.map(document.blockOrder, function(id, index) {
 
       
