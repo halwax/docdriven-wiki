@@ -96,6 +96,11 @@ Vue.component('doc-block-markdown', {
           return ''; // use external default escaping
         },
         replaceLink: function (link, env) {
+
+          if(link.startsWith('https://') || link.startsWith('http://')) {
+            return link;
+          }
+
           var linkPath = path;
           var fileExtensionPattern = /\.[0-9a-z]+$/i;
           if(link.match(fileExtensionPattern) && path.includes('#')) {
@@ -113,7 +118,11 @@ Vue.component('doc-block-markdown', {
             if(link.startsWith('./')) {
               link = link.slice(2,link.length);
             }
-            linkPath = linkPath + '#' + link;
+            if(linkPath.includes('#')) {
+              linkPath = linkPath + '/' + link;
+            } else {
+              linkPath = linkPath + '#' + link;
+            }
           }
           return linkPath;
         }      
