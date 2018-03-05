@@ -254,7 +254,7 @@ Vue.component('doc-block-editor', {
     changeConfig: _.debounce(function() {
       var model = this.editor.getModel();
       var editorLanguage = this.toEditorLanguage(this.language);
-      window.monaco.editor.setModelLanguage(model, la);
+      window.monaco.editor.setModelLanguage(model, editorLanguage);
 
       var changedBlock = {
         id: this.block.id,
