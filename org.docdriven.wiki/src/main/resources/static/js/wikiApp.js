@@ -53,22 +53,38 @@ Vue.component('doc-block-markdown', {
     },
     compiledMarkdown: function (block) {
       var path = this.path;
-      var markdown = block.content;
       if(block.codeBlock) {
         /*
         markdown =  '```' + 
-          this.block.language + '\n' +
-          markdown + '\n' +
-          '```';
+        this.block.language + '\n' +
+        markdown + '\n' +
+        '```';
         */
-        try {
-          return '<pre><code>' + 
+       if(block.language=='graphviz') {
+         try {
+           return Viz(block.content);
+         } catch(e) {
+            console.log('graphviz rendering failed');
+            return [
+              '<p>',
+              'Error in grapviz ' + e.message,
+              '</p>',
+              '<pre><code>',
+              block.content,
+              '</code></pre>'
+            ].join('\n');
+         }
+        } else {
+          try {
+            return '<pre><code>' + 
             hljs.highlight(block.language, block.content).value + 
             '</code></pre>';
-        } catch (__) {
-          console.log('hightlight error with '+block.language);
+          } catch (__) {
+            console.log('hightlight error with '+block.language);
+          }  
         }
       }
+      var markdown = block.content;
       var md = window.markdownit({
         highlight: function (str, lang) {
           if (lang && hljs.getLanguage(lang)) {
@@ -91,6 +107,8 @@ Vue.component('doc-block-markdown', {
               hashPath = hashPath.slice(0, hashPath.length - (lastHashPathSegment.length+1));
             }
             linkPath = '/api/files' + linkPath + '/' + hashPath + '/' + link;
+          } else if(link.match(fileExtensionPattern)) {
+            linkPath = '/api/files' + linkPath + '/' + link;
           } else {
             if(link.startsWith('./')) {
               link = link.slice(2,link.length);
@@ -174,7 +192,10 @@ Vue.component('doc-block-editor', {
     },
     block: function(newBlock) {
       if(!_.isNil(this.editor) && !this.show) {
-        this.editor.setValue(newBlock.content);
+        var editorContent = this.editor.getValue();
+        if(editorContent !== newBlock.content) {
+          this.editor.setValue(newBlock.content);
+        }
       }
     }
   },
@@ -189,9 +210,10 @@ Vue.component('doc-block-editor', {
   },
   computed: {
     editorOptions: function() {
+      var editorLanguage = this.toEditorLanguage(this.block.language);
       return {
         value: this.block.content,
-        language: this.block.language,
+        language: editorLanguage,
         scrollBeyondLastLine: false
         //, theme: 'vs-dark'
       };
@@ -218,7 +240,7 @@ Vue.component('doc-block-editor', {
         language: this.language
       }
       this.$emit('blockChanged',changedBlock);
-    }, 300),
+    }, 500),
     destroyMonaco: function() {
       if (typeof this.editor !== 'undefined') {
         this.editor.dispose();
@@ -231,7 +253,9 @@ Vue.component('doc-block-editor', {
     },
     changeConfig: _.debounce(function() {
       var model = this.editor.getModel();
-      window.monaco.editor.setModelLanguage(model, this.block.language);
+      var editorLanguage = this.toEditorLanguage(this.language);
+      window.monaco.editor.setModelLanguage(model, la);
+
       var changedBlock = {
         id: this.block.id,
         content: this.block.content,
@@ -239,8 +263,15 @@ Vue.component('doc-block-editor', {
         language: this.language
       }
       this.$emit('blockChanged',changedBlock);
-    }, 300)
-  }  
+    }, 500),
+    toEditorLanguage: function(language) {
+      var editorLanguage = language;
+      if(editorLanguage=='graphviz') {
+        return 'plaintext';
+      }
+      return editorLanguage;
+    }
+  }
 })
 
 /**
@@ -393,14 +424,16 @@ Vue.component('doc-wiki', {
     '</div>'
   ].join('\n'),
   props: ['windowWidth','path'],
-  data: function() { 
+  data: function() {
+    var path = this.getDocResourcePath();
     return {
       isInEditMode: false,
       document: {
         meta: {},
         blocksInEditMode: [],
         blockOrder: [],
-        blocks: {}
+        blocks: {},
+        path: path
       }
     }
   },
@@ -470,24 +503,25 @@ Vue.component('doc-wiki', {
       this.$set(this.document, 'meta', meta);
       this.autoSaveContent();
     },
-    initContent: function(content) {
+    initContent: function(content, path) {
       var document = docDriven.extract(content);
       var docWiki = this;
+      docWiki.$set(this.document,'blocks',[]);
+      this.document.blocksInEditMode = [];
       Object.assign(this.$data, this.$options.data.call(this));
       _.forEach(document.blockOrder, function(id) {
         docWiki.$set(docWiki.document.blocks, id, document.blocks[id]);
         docWiki.document.blockOrder.push(id);        
       })
-      this.document.blocksInEditMode = [];
       this.$set(this.document, 'meta', document.meta);
+      this.$set(this.document, 'path', path);
     },
     triggerBlockEditMode: function(block) {
       this.document.blocksInEditMode.pop();      
       this.document.blocksInEditMode.push(block.id);
     },
-    autoSaveContent: _.debounce(function () {
-      var path = this.getDocResourcePath()
-      axios.post('/api/docs' + path, docDriven.render(this.document), {
+    autoSaveContent: _.debounce(function () {      
+      axios.post('/api/docs' + this.document.path, docDriven.render(this.document), {
         headers: {
           'Content-Type': 'application/json',
         }
@@ -497,7 +531,7 @@ Vue.component('doc-wiki', {
       var path = this.getDocResourcePath()
       var initContent = this.initContent;
       axios.get('/api/docs' + path).then(function (response) {
-        initContent(response.data);
+        initContent(response.data, path);
       })
     },
     reloadContent: _.debounce(function() {
