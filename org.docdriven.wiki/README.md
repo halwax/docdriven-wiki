@@ -10,9 +10,27 @@ Documentation often gets out of sync and is spread along many locations in multi
 This project intends to provide tools, concepts and ideas to better provide up to date
 and consistent documentation in a structured way.
 
-## Structure
+## Technical Structure
+[//]: # (block)
+```graphviz
+digraph "doc-driven-wiki" {
+    node [shape=rect];
+    "doc-wiki" -> "doc-breadcrumbs";
+    "doc-wiki" -> "doc-header";
+    "doc-wiki" -> "doc-block" [label="0..*"];
+    "doc-block" -> "doc-block-editor";
+    "doc-block" -> "doc-block-markdown";
+    "doc-header" -> "doc-block-editor";
+}
+```
+[//]: # (block)
+The Doc Driven Wiki App is a client server application with Spring Boot for the Backend and Thymleaf in combination with VueJs in the Frontend.
+The Frontend is structured in several components which are partly implemented in a Single Page Application style.
 
-### Ant-Design
+[//]: # (block)
+## UI Structure
+
+### Navigation
 
 - Documentation supports editing of GitHub md files
 - Tree-Structure navigation on the left, section navigation on the right
