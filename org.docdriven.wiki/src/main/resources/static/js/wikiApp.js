@@ -119,12 +119,16 @@ Vue.component('doc-block-markdown', {
         */
        if(block.language=='mxgraph') {
           try {
+            var wikiGraph = new WikiGraph();
             var graphDiv = document.createElement('div');
             var graph = new mxGraph(graphDiv);
+            wikiGraph.initStyle(graph);
+            graph.setHtmlLabels(true);
             var parent = graph.getDefaultParent();
+            var layout = new mxHierarchicalLayout(graph);
             graph.getModel().beginUpdate();
             try {
-              new Function('graph', 'parent', this.block.content)(graph, parent);
+              new Function('graph', 'parent', 'layout', this.block.content)(graph, parent, layout);
             } finally {
               graph.getModel().endUpdate();
             }
