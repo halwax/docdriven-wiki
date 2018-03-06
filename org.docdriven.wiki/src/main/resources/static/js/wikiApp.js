@@ -121,9 +121,10 @@ Vue.component('doc-block-markdown', {
           try {
             var graphDiv = document.createElement('div');
             var graph = new mxGraph(graphDiv);
+            var parent = graph.getDefaultParent();
             graph.getModel().beginUpdate();
             try {
-              new Function(this.block.content)(graph);
+              new Function('graph', 'parent', this.block.content)(graph, parent);
             } finally {
               graph.getModel().endUpdate();
             }
