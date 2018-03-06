@@ -2,12 +2,62 @@ require.config({ paths: { 'vs': '/monaco-editor/min/vs' }});
 
 var docDriven = new DocDriven();
 
+var mxGraphToSvg = function(graph) {
+  var background = '#ffffff';
+  var scale = 1;
+  var border = 1;
+  
+  var imgExport = new mxImageExport();
+  var bounds = graph.getGraphBounds();
+  var vs = graph.view.scale;
+  // Prepares SVG document that holds the output
+  var svgDoc = mxUtils.createXmlDocument();
+  var root = (svgDoc.createElementNS != null) ?
+        svgDoc.createElementNS(mxConstants.NS_SVG, 'svg') : svgDoc.createElement('svg');
+    
+  if (background != null) {
+    if (root.style != null) {
+      root.style.backgroundColor = background;
+    } else {
+      root.setAttribute('style', 'background-color:' + background);
+    }
+  }
+    
+  if (svgDoc.createElementNS == null) {
+      root.setAttribute('xmlns', mxConstants.NS_SVG);
+      root.setAttribute('xmlns:xlink', mxConstants.NS_XLINK);
+  } else {
+    // KNOWN: Ignored in IE9-11, adds namespace for each image element instead. No workaround.
+    root.setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xlink', mxConstants.NS_XLINK);
+  }
+  
+  root.setAttribute('width', (Math.ceil(bounds.width * scale / vs) + 2 * border) + 'px');
+  root.setAttribute('height', (Math.ceil(bounds.height * scale / vs) + 2 * border) + 'px');
+  root.setAttribute('version', '1.1');
+  
+    // Adds group for anti-aliasing via transform
+  var group = (svgDoc.createElementNS != null) ?
+      svgDoc.createElementNS(mxConstants.NS_SVG, 'g') : svgDoc.createElement('g');
+  group.setAttribute('transform', 'translate(0.5,0.5)');
+  root.appendChild(group);
+  svgDoc.appendChild(root);
+    // Renders graph. Offset will be multiplied with state's scale when painting state.
+  var svgCanvas = new mxSvgCanvas2D(group);
+  svgCanvas.translate(Math.floor((border / scale - bounds.x) / vs), Math.floor((border / scale - bounds.y) / vs));
+  svgCanvas.scale(scale / vs);
+  // Displayed if a viewer does not support foreignObjects (which is needed to HTML output)
+  svgCanvas.foAltText = '[Not supported by viewer]';
+  imgExport.drawState(graph.getView().getState(graph.model.root), svgCanvas);
+  return mxUtils.getXml(root);
+}
+
 /**
  * Markdown Component
  */
 Vue.component('doc-block-markdown', {
   template: [
     '<div v-show="show">',
+    ' <div ref="renderContainer"></div>',
     ' <div :class="{\'doc-block-code\' : block.codeBlock, \'doc-block-markdown\' : !block.codeBlock}">',
     '   <div class="doc-block-layout">',
     '     <div',
@@ -43,10 +93,17 @@ Vue.component('doc-block-markdown', {
       }
     },
     executeCode: function(e) {
-      var result = new Function(this.block.content)();
       var jsonResult = '';
-      if(result !== undefined) {
-        jsonResult = JSON.stringify(result, null, 2)
+      try {
+        var result = new Function(this.block.content)();
+        if(result !== undefined) {
+          jsonResult = JSON.stringify(result, null, 2)
+        }  
+      } catch(ex) {
+        console.error("error executing code", ex.message);
+        jsonResult = JSON.stringify({
+          error: ex.message
+        }, null, 2);
       }
       this.executionResult = hljs.highlight('json', jsonResult).value;
       this.executed = true;
@@ -60,10 +117,27 @@ Vue.component('doc-block-markdown', {
         markdown + '\n' +
         '```';
         */
-       if(block.language=='graphviz') {
-         try {
-           return Viz(block.content);
-         } catch(e) {
+       if(block.language=='mxgraph') {
+          try {
+            var graphDiv = document.createElement('div');
+            var graph = new mxGraph(graphDiv);
+            graph.getModel().beginUpdate();
+            try {
+              new Function(this.block.content)(graph);
+            } finally {
+              graph.getModel().endUpdate();
+            }
+            var svg = mxGraphToSvg(graph);
+            graph.destroy();
+            graphDiv.remove();
+            return svg;
+          } catch(ex) {
+            console.error("error executing code", ex.message);
+          }
+       } else if(block.language=='graphviz') {
+          try {
+            return Viz(block.content);
+          } catch(e) {
             console.log('graphviz rendering failed');
             return [
               '<p>',
@@ -277,6 +351,8 @@ Vue.component('doc-block-editor', {
       var editorLanguage = language;
       if(editorLanguage=='graphviz') {
         return 'plaintext';
+      } else if (editorLanguage=='mxgraph') {
+        return 'javascript';
       }
       return editorLanguage;
     }
