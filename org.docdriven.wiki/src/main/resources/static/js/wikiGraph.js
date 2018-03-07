@@ -20,8 +20,9 @@ var WikiGraph = function () {
 	this.edgeStyle[mxConstants.STYLE_ROUNDED] = true;
 	this.edgeStyle[mxConstants.STYLE_FONTCOLOR] = 'black';
 	this.edgeStyle[mxConstants.STYLE_STROKECOLOR] = 'black';
-  this.edgeStyle[mxConstants.STYLE_FONTSIZE] = '10';
-  
+  this.edgeStyle[mxConstants.STYLE_FONTSIZE] = '12';
+  this.edgeStyle[mxConstants.STYLE_ALIGN] = mxConstants.ALIGN_LEFT;
+  this.edgeStyle[mxConstants.STYLE_VERTICAL_ALIGN] = mxConstants.ALIGN_TOP;
 }
 
 WikiGraph.prototype.initStyle = function(graph) {
