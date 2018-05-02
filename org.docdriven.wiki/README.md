@@ -10,18 +10,54 @@ Documentation often gets out of sync and is spread along many locations in multi
 This project intends to provide tools, concepts and ideas to better provide up to date
 and consistent documentation in a structured way.
 
+It's possible to register more wiki projects in the filesystem.
+
 ## Technical Structure
 [//]: # (block)
-```graphviz
-digraph "doc-driven-wiki" {
-    node [shape=rect];
-    "doc-wiki" -> "doc-breadcrumbs";
-    "doc-wiki" -> "doc-header";
-    "doc-wiki" -> "doc-block" [label="0..*"];
-    "doc-block" -> "doc-block-editor";
-    "doc-block" -> "doc-block-markdown";
-    "doc-header" -> "doc-block-editor";
+```mxgraph
+/** @type {MxGraph} */
+var graph = it.mxGraph;
+var parent = it.parent;
+
+var boxSize = {
+    width: 130,
+    height: 60
 }
+
+var insertBox = function(title, description) {
+    return graph.insertVertex(parent, null, [
+            '<b>'+title+'</b><br/>',
+            description
+        ].join('\n'), 
+        0, 0, 
+        boxSize.width, boxSize.height, 
+        'whiteSpace=wrap;');
+}
+
+var connectBoxes = function(box1, box2, label) {
+    graph.insertEdge(parent, null, label, box1, box2);
+}
+
+var docWiki = insertBox('doc-wiki', 'entry point for the application');
+var docBreadCrumbs = insertBox('doc-breadcrumbs', 'hash path links');
+var docHeader = insertBox('doc-header', 'toolbar, title, summary');
+var docBlock = insertBox('doc-block', 'content block');
+var docBlockEditor = insertBox('doc-block-editor', 'content editor');
+var docBlockMd = insertBox('doc-block-markdown', 'content markdown viewer')
+
+connectBoxes(docWiki, docBreadCrumbs, '1');
+connectBoxes(docWiki, docHeader, '1');
+connectBoxes(docWiki, docBlock, '0..*');
+connectBoxes(docBlock, docBlockEditor, '1');
+connectBoxes(docBlock, docBlockMd, '1');
+connectBoxes(docHeader, docBlockEditor, '1');
+
+var layout = new mxCompactTreeLayout(graph);
+//layout.interHierarchySpacing = 50;
+//layout.interRankCellSpacing = 50;
+//layout.disableEdgeStyle = false;
+//layout.parallelEdgeSpacing = 20;
+layout.execute(parent);
 ```
 [//]: # (block)
 The Doc Driven Wiki App is a client server application with Spring Boot for the Backend and Thymleaf in combination with VueJs in the Frontend.
