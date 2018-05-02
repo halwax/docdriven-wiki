@@ -119,16 +119,25 @@ Vue.component('doc-block-markdown', {
         */
        if(block.language=='mxgraph') {
           try {
-            var wikiGraph = new WikiGraph();
+            
             var graphDiv = document.createElement('div');
+
+            var wikiGraph = new WikiGraph();
             var graph = new mxGraph(graphDiv);
             wikiGraph.initStyle(graph);
             graph.setHtmlLabels(true);
+
             var parent = graph.getDefaultParent();
-            var layout = new mxHierarchicalLayout(graph);
+
+            var mxGraphContext = {
+              mxGraph: graph,
+              wikiGraph:  wikiGraph,
+              parent: parent
+            }
+
             graph.getModel().beginUpdate();
             try {
-              new Function('graph', 'parent', 'layout', this.block.content)(graph, parent, layout);
+              new Function('it', this.block.content)(mxGraphContext);
             } finally {
               graph.getModel().endUpdate();
             }
@@ -312,6 +321,19 @@ Vue.component('doc-block-editor', {
       require(['vs/editor/editor.main'], this.createMonaco);
     },
     createMonaco: function() {
+
+      var extraLibs = window.monaco.languages.typescript.javascriptDefaults.getExtraLibs();
+      if(_.isNil(extraLibs['graph.d.ts'])) {
+        window.monaco.languages.typescript.javascriptDefaults.addExtraLib([
+          'declare class MxGraph {',
+          '    /**',
+          '     * Returns the next fact',
+          '     */',
+          '    next():string',
+          '}'
+        ].join('\n'), 'graph.d.ts');  
+      }
+
       this.editor = window.monaco.editor.create(this.$el.querySelector('#editor'), this.editorOptions);
       var triggerChangeContent = this.triggerChangeContent;
       this.editor.onDidChangeModelContent(function(e){
@@ -343,7 +365,6 @@ Vue.component('doc-block-editor', {
       var model = this.editor.getModel();
       var editorLanguage = this.toEditorLanguage(this.language);
       window.monaco.editor.setModelLanguage(model, editorLanguage);
-
       var changedBlock = {
         id: this.block.id,
         content: this.block.content,

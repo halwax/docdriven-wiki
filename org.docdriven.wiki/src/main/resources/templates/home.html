@@ -20,6 +20,7 @@
     <doc-wiki v-bind:window-width="windowWidth" v-bind:path="path" />
   </div>
 
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
   <script src="https://unpkg.com/markdown-it@8.4.0/dist/markdown-it.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-replace-link@1.0.1/dist/markdown-it-replace-link.min.js"></script>
@@ -28,16 +29,17 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/languages/yaml.min.js"></script>
   <script src="https://unpkg.com/vue@2.5.3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/http-vue-loader@1.3.4/src/httpVueLoader.min.js"></script>
   <script src="/monaco-editor/min/vs/loader.js"></script>
   <script src="/vizjs/viz-lite.js"></script>
   <script type="text/javascript">
 	mxBasePath = '/mxgraph';
   </script>
   <script src="/mxgraph/mxClient.js"></script>  
-  <script src="/js/wikiGraph.js"></script>
-  <script src="/js/docdriven.js"></script>
-  <script src="/js/components/breadcrumbs.js"></script>
-  <script src="/js/wikiApp.js"></script>
+  <script type="text/babel" src="/js/wikiGraph.js"></script>
+  <script type="text/babel" src="/js/docdriven.js"></script>
+  <script type="text/babel" src="/js/components/breadcrumbs.js"></script>
+  <script type="text/babel" src="/js/wikiApp.js"></script>
 
 </body>
 
