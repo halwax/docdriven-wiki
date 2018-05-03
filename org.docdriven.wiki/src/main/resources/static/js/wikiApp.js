@@ -1,3 +1,6 @@
+import DocDriven from './docdriven.js'
+import WikiGraph from './wikiGraph.js'
+
 require.config({ paths: { 'vs': '/monaco-editor/min/vs' }});
 
 var docDriven = new DocDriven();

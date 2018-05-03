@@ -116,6 +116,7 @@ Frameworks that would be interesting to integrate ...
 
 - Software Architecture for Developers (by Simon Brown - <http://www.codingthearchitecture.com/authors/sbrown/>)
 - Wikipedia - <https://en.wikipedia.org/wiki/Wikipedia:The_perfect_article>
+- http://www.literateprogramming.com/documentation.pdf
 
 ```javascript
 function() {

@@ -9,7 +9,7 @@
  *  <li></li>
  * </ul>
  */
-class DocDriven {
+export default class DocDriven {
   
   constructor() {
     var optionalByteOrderMark = '\\ufeff?'

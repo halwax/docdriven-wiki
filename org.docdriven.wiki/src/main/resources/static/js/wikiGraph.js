@@ -1,4 +1,4 @@
-class WikiGraph {
+export default class WikiGraph {
   constructor() {
     // Creates the default style for vertices
     this.vertexStyle = [];
