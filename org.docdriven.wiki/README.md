@@ -117,6 +117,9 @@ Frameworks that would be interesting to integrate ...
 - Software Architecture for Developers (by Simon Brown - <http://www.codingthearchitecture.com/authors/sbrown/>)
 - Wikipedia - <https://en.wikipedia.org/wiki/Wikipedia:The_perfect_article>
 - http://www.literateprogramming.com/documentation.pdf
+- https://doorstop.readthedocs.io/en/latest/
+- https://opensource.guide/
+- https://monday.com/blog/agile-project-management-scrum/
 
 ```javascript
 function() {

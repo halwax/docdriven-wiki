@@ -218,6 +218,46 @@ Vue.component('doc-block-markdown', {
           return linkPath;
         }      
       }).use(markdownitReplaceLink);
+      var textRule = md.renderer.rules.text;
+      md.renderer.rules.text = function (tokens, idx /*, options, env */) {
+        
+        var faRegex = /:fa-.+?:/;
+        var taskRegex = /\[[ x\?]\]/;
+        var combinedRegex = new RegExp('((?:'+faRegex.source+')|(?:'+taskRegex.source+'))');
+
+        var content = tokens[idx].content;
+        if(combinedRegex.test(content)) {
+          var newContent = '';
+          var contentSplit = content.split(combinedRegex);
+          for(var i = 0; i < contentSplit.length; i++) {
+            var contentPart = contentSplit[i];
+            if(faRegex.test(contentPart)) {
+              newContent += contentPart.replace(faRegex, function(match) {
+                return `<i class="fa ${match.slice(1,-1)}"></i>`
+              })
+            } else if (taskRegex.test(contentPart)) {
+              switch(contentPart) {
+                case '[ ]' : {
+                  newContent += '<i class="fa fa-square-o fa-fw"></i>'
+                  break;
+                }
+                case '[x]' : {
+                  newContent += '<i class="fa fa-check-square-o fa-fw"></i>'
+                  break;
+                }
+                case '[?]' : {
+                  newContent += '<i class="fa fa-question fa-fw"></i>'
+                  break;
+                }
+              }
+            } else {
+              newContent += md.utils.escapeHtml(contentPart);
+            }
+          }
+          return newContent;
+        }
+        return textRule(tokens,idx);
+      }
       return md.render(markdown);
     },
     isExecutable: function(block) {
