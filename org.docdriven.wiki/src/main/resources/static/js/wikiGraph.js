@@ -1,4 +1,4 @@
-export default class WikiGraph {
+class WikiGraph {
   constructor() {
     // Creates the default style for vertices
     this.vertexStyle = [];
@@ -30,4 +30,6 @@ export default class WikiGraph {
     graph.getStylesheet().putDefaultEdgeStyle(this.edgeStyle);
   }
 }
+
+export default WikiGraph;
 
