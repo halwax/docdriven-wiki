@@ -24,6 +24,9 @@ class WikiMd {
             }
           }
           if(taskList) {
+            // remove task symbols from text / inline nodes
+            // add class attribute fa-ul to ul and a fa-li
+            // token after the list-item-open
             console.log('is tasklist')
           }
         } else if (token.type == 'list_item_open') {
