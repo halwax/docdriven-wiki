@@ -1,5 +1,6 @@
 import DocDriven from './docdriven.js'
 import WikiGraph from './wikiGraph.js'
+import WikiMd from './wikiMd.js'
 
 require.config({ paths: { 'vs': '/monaco-editor/min/vs' }});
 
@@ -216,8 +217,11 @@ Vue.component('doc-block-markdown', {
             }
           }
           return linkPath;
-        }      
+        }
       }).use(markdownitReplaceLink);
+
+      new WikiMd(md);
+
       var textRule = md.renderer.rules.text;
       md.renderer.rules.text = function (tokens, idx /*, options, env */) {
         
