@@ -2,106 +2,18 @@ let openTaskStr = '[ ]';
 let finishedTaskStr = '[x]';
 let unclearTaskStr = '[?]';
 let inProgressTaskStr = '[~]';
+let taskRegex = /\[[ x\?~]\]/;
 
 class WikiMd {
 
   constructor(md) {
 
-    let taskRegex = /\[[ x\?~]\]/;
-
-    md.core.ruler.push('docdriven', function(state) {
-      
-      let tokens = state.tokens.slice(0);
-      let bulletListStack = [];
-
-      for(let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++) {
-        let token = tokens[tokenIndex];
-        if(token.type == 'bullet_list_open') {
-          bulletListStack.push({
-            ulToken : token,
-            items : []
-          })
-        } else if (token.type == 'bullet_list_close') {
-
-          let bulletListObj = bulletListStack.pop();
-          let ulToken = bulletListObj.ulToken;
-          let itemObjs = bulletListObj.items
-          let taskList = itemObjs.length > 0;
-          
-          for(let itemIdx = 0; itemIdx < itemObjs.length; itemIdx++) {
-            let itemObj = itemObjs[itemIdx];
-            if(itemObj.taskTextToken == null) {
-              taskList = false;
-            }
-          }
-
-          if(taskList) {
-            // remove task symbols from text / inline nodes
-            // add class attribute fa-ul to ul and a fa-li
-            // token after the list-item-open
-            itemObjs.forEach(itemObj => {
-              
-              let itemTokenIndex = state.tokens.findIndex(token => token === itemObj.itemToken)
-              let taskTextToken = itemObj.taskTextToken;
-
-              ulToken.attrJoin('class', 'fa-ul');
-              
-              let taskOpenToken = new state.Token('block','i',1);
-              taskOpenToken.level = taskTextToken.level;
-              taskOpenToken.attrSet('class', 'fa-li fa fa-'+ this.mapToFontAwesome(itemObj.taskType) +' fa-fw');
-
-              state.tokens.splice(itemTokenIndex+1, 0, taskOpenToken);
-
-              let taskCloseToken = new state.Token('block','i',-1);
-              taskCloseToken.level = taskTextToken.level;
-
-              state.tokens.splice(itemTokenIndex+2, 0, taskCloseToken);
-
-              taskTextToken.content = taskTextToken.content.replace(taskRegex,'');
-              if(taskTextToken.type === 'inline') {
-                let taskTextTokenChildren = taskTextToken.children;
-                for(let childIndex = 0; childIndex < taskTextTokenChildren.length; childIndex++) {
-                  let taskTextTokenChild = taskTextTokenChildren[childIndex];
-                  if(taskRegex.test(taskTextTokenChild.content)){
-                    taskTextTokenChild.content = taskTextTokenChild.content.replace(taskRegex,'');
-                    break;
-                  }
-                }
-              }
-            })
-          }
-        } else if (token.type == 'list_item_open') {
-
-          let bulletListObj = bulletListStack[bulletListStack.length-1];
-          let nextTextTokenIndex = this.findNextListItemTextToken(tokens, tokenIndex + 1);
-          let taskItem = false;
-          let taskTextToken = null;
-          let taskType = openTaskStr;
-
-
-          if(nextTextTokenIndex !== -1) {
-            let nextToken = tokens[nextTextTokenIndex];
-            if(nextToken.content.startsWith(openTaskStr) ||
-              nextToken.content.startsWith(unclearTaskStr) ||
-              nextToken.content.startsWith(finishedTaskStr) ||
-              nextToken.content.startsWith(inProgressTaskStr)) {
-              taskItem = true;
-              taskTextToken = nextToken;
-              taskType = nextToken.content.substring(0, 3);
-            }
-          }
-
-          bulletListObj.items.push({
-            itemToken: token,
-            taskTextToken: taskTextToken,
-            taskType: taskType
-          });
-        }
-      }
-    }.bind(this));
+    md.core.ruler.push('docdriven', state => {
+     this.applyTaskListRule(state); 
+    });
 
     var textRule = md.renderer.rules.text;
-    md.renderer.rules.text = function (tokens, idx /*, options, env */) {
+    md.renderer.rules.text = (tokens, idx) => {
       
       var faRegex = /:fa-.+?:/;
       var combinedRegex = new RegExp('((?:'+faRegex.source+')|(?:'+taskRegex.source+'))');
@@ -126,6 +38,95 @@ class WikiMd {
         return newContent;
       }
       return textRule(tokens,idx);
+    }
+
+    md.renderer.rules.taskItemToken = (tokens, idx) => {
+      let taskItemToken = tokens[idx];
+      return `<i class="fa-li fa fa-${this.mapToFontAwesome(taskItemToken.content)}"></i>`
+    }
+  }
+
+  applyTaskListRule(state) {
+
+    let tokens = state.tokens.slice(0);
+    let bulletListStack = [];
+
+    for(let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++) {
+      let token = tokens[tokenIndex];
+      if(token.type == 'bullet_list_open') {
+        bulletListStack.push({
+          ulToken : token,
+          items : []
+        })
+      } else if (token.type == 'bullet_list_close') {
+
+        let bulletListObj = bulletListStack.pop();
+        let ulToken = bulletListObj.ulToken;
+        let itemObjs = bulletListObj.items
+        let taskList = itemObjs.length > 0;
+        
+        for(let itemIdx = 0; itemIdx < itemObjs.length; itemIdx++) {
+          let itemObj = itemObjs[itemIdx];
+          if(itemObj.taskTextToken == null) {
+            taskList = false;
+          }
+        }
+
+        if(taskList) {
+          // remove task symbols from text / inline nodes
+          // add class attribute fa-ul to ul and a fa-li
+          // token after the list-item-open
+          itemObjs.forEach(itemObj => {
+            
+            let itemTokenIndex = state.tokens.findIndex(token => token === itemObj.itemToken)
+            let taskTextToken = itemObj.taskTextToken;
+
+            ulToken.attrJoin('class', 'fa-ul');
+            
+            let taskItemToken = new state.Token('taskItemToken');
+            taskItemToken.content = itemObj.taskType;
+            state.tokens.splice(itemTokenIndex+1, 0, taskItemToken);
+
+            taskTextToken.content = taskTextToken.content.replace(taskRegex,'');
+            
+            if(taskTextToken.type === 'inline') {
+              let taskTextTokenChildren = taskTextToken.children;
+              for(let childIndex = 0; childIndex < taskTextTokenChildren.length; childIndex++) {
+                let taskTextTokenChild = taskTextTokenChildren[childIndex];
+                if(taskRegex.test(taskTextTokenChild.content)){
+                  taskTextTokenChild.content = taskTextTokenChild.content.replace(taskRegex,'');
+                  break;
+                }
+              }
+            }
+          })
+        }
+      } else if (token.type == 'list_item_open') {
+
+        let bulletListObj = bulletListStack[bulletListStack.length-1];
+        let nextTextTokenIndex = this.findNextListItemTextToken(tokens, tokenIndex + 1);
+        let taskItem = false;
+        let taskTextToken = null;
+        let taskType = openTaskStr;
+
+        if(nextTextTokenIndex !== -1) {
+          let nextToken = tokens[nextTextTokenIndex];
+          if(nextToken.content.startsWith(openTaskStr) ||
+            nextToken.content.startsWith(unclearTaskStr) ||
+            nextToken.content.startsWith(finishedTaskStr) ||
+            nextToken.content.startsWith(inProgressTaskStr)) {
+            taskItem = true;
+            taskTextToken = nextToken;
+            taskType = nextToken.content.substring(0, 3);
+          }
+        }
+
+        bulletListObj.items.push({
+          itemToken: token,
+          taskTextToken: taskTextToken,
+          taskType: taskType
+        });
+      }
     }
   }
 
