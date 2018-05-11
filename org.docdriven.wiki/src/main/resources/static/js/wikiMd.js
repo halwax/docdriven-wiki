@@ -30,7 +30,7 @@ class WikiMd {
               return `<i class="fa ${match.slice(1,-1)}"></i>`
             })
           } else if (taskRegex.test(contentPart)) {
-            newContent += `<i class="fa fa-${this.mapToFontAwesome(contentPart)} fa-fw></i>`
+            newContent += `<i class="fa fa-${this.mapToFontAwesome(contentPart, false)} fa-fw></i>`
           } else {
             newContent += md.utils.escapeHtml(contentPart);
           }
@@ -42,7 +42,9 @@ class WikiMd {
 
     md.renderer.rules.taskItemToken = (tokens, idx) => {
       let taskItemToken = tokens[idx];
-      return `<i class="fa-li fa fa-${this.mapToFontAwesome(taskItemToken.content)}"></i>`
+      let fill = (taskItemToken.meta.listLevel+1) % 2 !== 0;
+      let faIconName = this.mapToFontAwesome(taskItemToken.content, fill);
+      return `<i class="fa-li fa fa-${faIconName}"></i>`
     }
   }
 
@@ -50,14 +52,17 @@ class WikiMd {
 
     let tokens = state.tokens.slice(0);
     let bulletListStack = [];
+    let listLevel = 0;
 
     for(let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++) {
       let token = tokens[tokenIndex];
       if(token.type == 'bullet_list_open') {
         bulletListStack.push({
           ulToken : token,
-          items : []
+          items : [],
+          listLevel : listLevel
         })
+        listLevel++;
       } else if (token.type == 'bullet_list_close') {
 
         let bulletListObj = bulletListStack.pop();
@@ -65,6 +70,8 @@ class WikiMd {
         let itemObjs = bulletListObj.items
         let taskList = itemObjs.length > 0;
         
+        listLevel--;
+
         for(let itemIdx = 0; itemIdx < itemObjs.length; itemIdx++) {
           let itemObj = itemObjs[itemIdx];
           if(itemObj.taskTextToken == null) {
@@ -85,6 +92,9 @@ class WikiMd {
             
             let taskItemToken = new state.Token('taskItemToken');
             taskItemToken.content = itemObj.taskType;
+            taskItemToken.meta = {
+              listLevel: listLevel
+            }
             state.tokens.splice(itemTokenIndex+1, 0, taskItemToken);
 
             taskTextToken.content = taskTextToken.content.replace(taskRegex,'');
@@ -146,19 +156,19 @@ class WikiMd {
     return notFoundTextTokenIndex;
   }
 
-  mapToFontAwesome(taskType) {
+  mapToFontAwesome(taskType, fill) {
     switch(taskType) {
       case openTaskStr: {
-        return 'square-o'
+        return 'square' + (fill ? '' : '-o')
       }
       case finishedTaskStr: {
-        return 'check-square-o'
+        return 'check-square' + (fill ? '' : '-o')
       }
       case unclearTaskStr: {
-        return 'question'
+        return 'question' + (fill ? '-circle' : '')
       }
       case inProgressTaskStr: {
-        return 'pencil-square-o'
+        return 'pencil-square' + (fill ? '' : '-o')
       }
     }
   }
