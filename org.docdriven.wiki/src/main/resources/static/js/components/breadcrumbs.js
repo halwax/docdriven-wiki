@@ -1,4 +1,4 @@
-Vue.component('doc-breadcrumbs', {
+export default {
   template: [
     '<div class="doc-breadcrumb" >',
     '  <a v-for="breadcrumb in toBreadcrumbs(path)" :href="breadcrumb.href"><span>{{breadcrumb.name}}</span></a>',
@@ -68,4 +68,4 @@ Vue.component('doc-breadcrumbs', {
       return result;
     }
   }
-})
+}

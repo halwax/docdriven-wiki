@@ -1,8 +1,13 @@
 import DocDriven from './docdriven.js'
 import WikiGraph from './wikiGraph.js'
 import WikiMd from './wikiMd.js'
+import BreadCrumbs from './components/breadcrumbs.js';
+import Modal from './components/modal.js';
 
 require.config({ paths: { 'vs': '/monaco-editor/min/vs' }});
+
+Vue.component('doc-breadcrumbs', BreadCrumbs);
+Vue.component('modal', Modal);
 
 var docDriven = new DocDriven();
 
@@ -389,43 +394,53 @@ Vue.component('doc-block', {
 })
 
 Vue.component('doc-header',{
-  template: [
-    '<div>',
-    ' <!-- Header Section -->',
-    ' <div class="doc-header">',
-    '   <h1 class="doc-title" @click="onDivClick">{{getTitle(document.meta)}}</h1>',
-    '   <div class="doc-toolbar">',
-    '    <!--<i class="fa fa-fw fa-download fa-lg doc-selectable"></i>-->',
-    '    <i class="fa fa-fw fa-eye fa-lg doc-selectable" v-show="isInEditMode" @click="switchEditMode"></i>',
-    '    <i class="fa fa-fw fa-pencil-square-o fa-lg doc-selectable" v-show="!isInEditMode" @click="switchEditMode"></i>',
-    '    <i class="fa fa-fw fa-pencil-square fa-lg doc-selectable"></i>',
-    '    <i class="fa fa-fw fa-clipboard fa-lg doc-selectable"></i>',
-    '   </div>',
-    ' </div>',  
-    ' <div v-if="hasSummary(document.meta)" v-show="!isInEditMode"',
-    '     class="doc-metainfo" @click="onDivClick">',
-    '  <p>',
-    '    {{getSummary(document.meta)}}',
-    '  </p>',
-    ' </div>',
-    ' <div class="doc-metainfo-editmode" v-show="isInEditMode">',
-    '   <doc-block-markdown v-if="!_.isNil(document.meta.content)"',
-    '     :show="isInEditMode && !isBlockInEditMode(document.blocksInEditMode)"',
-    '     :isInEditMode="isInEditMode"',
-    '     :block="document.meta"',
-    '     :path="\'/\'"',
-    '     @activateBlockEditMode="onDivClick"',
-    '   />',
-    '   <doc-block-editor', 
-    '     :show="isBlockInEditMode(document.blocksInEditMode)"',
-    '     :block="document.meta"',
-    '     :configurable="false"',
-    '     :windowWidth="windowWidth"',
-    '     @blockChanged="triggerChangeBlock"/>',
-    ' </div>',
-    '</div>',
-  ].join('\n'),
+  template: `
+    <div>
+      <!-- Modal Section -->
+      <modal v-if="showModal" @close="showModal = false">
+        <div slot="header">{{modalText}}</div>
+      </modal>
+      <!-- Header Section -->
+      <div class="doc-header">
+        <h1 class="doc-title" @click="onDivClick">{{getTitle(document.meta)}}</h1>
+        <div class="doc-toolbar">
+          <!--<i class="fa fa-fw fa-download fa-lg doc-selectable"></i>-->
+          <i class="fa fa-fw fa-eye fa-lg doc-selectable" v-show="isInEditMode" @click="switchEditMode"></i>
+          <i class="fa fa-fw fa-pencil-square-o fa-lg doc-selectable" v-show="!isInEditMode" @click="switchEditMode"></i>
+          <i class="fa fa-fw fa-pencil-square fa-lg doc-selectable"></i>
+          <i class="fa fa-fw fa-clipboard fa-lg doc-selectable" @click="copyMdToClipboard"></i>
+        </div>
+      </div>
+      <div v-if="hasSummary(document.meta)" v-show="!isInEditMode"
+        class="doc-metainfo" @click="onDivClick">
+        <p>
+          {{getSummary(document.meta)}}
+        </p>
+      </div>
+      <div class="doc-metainfo-editmode" v-show="isInEditMode">
+        <doc-block-markdown v-if="!_.isNil(document.meta.content)"
+          :show="isInEditMode && !isBlockInEditMode(document.blocksInEditMode)"
+          :isInEditMode="isInEditMode"
+          :block="document.meta"
+          :path="\'/\'"
+          @activateBlockEditMode="onDivClick"
+        />
+        <doc-block-editor 
+          :show="isBlockInEditMode(document.blocksInEditMode)"
+          :block="document.meta"
+          :configurable="false"
+          :windowWidth="windowWidth"
+          @blockChanged="triggerChangeBlock"/>
+      </div>
+    </div>
+  `,
   props:['document', 'isInEditMode', 'windowWidth'],
+  data: function() {
+    return {
+      showModal: false,
+      modalText: ''
+    }
+  },
   methods: {
     switchEditMode: function() {
       this.$emit('switchEditMode');
@@ -452,6 +467,38 @@ Vue.component('doc-header',{
     },
     triggerChangeBlock: function(content) {
       this.$emit('metaChanged', content);
+    },
+    copyMdToClipboard: function() {
+      let wikiDocument = this.document;
+      let headerComponent = this;
+      return new Promise(function (onSuccess, onError) {
+        let clipboardButton = document.createElement('button');
+        let mdContent = docDriven.render(wikiDocument);
+        let clipboard = new ClipboardJS(clipboardButton, {
+          text : function() {
+            return mdContent;
+          }
+        });
+        clipboard.on('success', function(e) {
+          clipboard.destroy();
+          onSuccess(e);
+        });
+        clipboard.on('error', function(e) {
+          clipboard.destroy();
+          onError(e);
+        });
+        clipboardButton.click();
+      }).then(function(e){
+        let result = 'Copied markdown to clipboard';
+        headerComponent.showModal = true;
+        headerComponent.modalText = result;
+        return result;
+      }, function(e) {
+        let result = 'Can not copy markdown to clipboard';
+        headerComponent.showModal = true;
+        headerComponent.modalText = result;
+        return result;
+      })
     }
   }
 })
