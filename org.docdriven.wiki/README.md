@@ -35,7 +35,9 @@ var insertBox = function(title, description) {
 }
 
 var connectBoxes = function(box1, box2, label) {
-    graph.insertEdge(parent, null, label, box1, box2);
+    // var edgeStyle = mxConstants.STYLE_CURVED + '= 1';
+    var edgeStyle = '';
+    graph.insertEdge(parent, null, label, box1, box2, edgeStyle);
 }
 
 var docWiki = insertBox('doc-wiki', 'entry point for the application');
@@ -52,11 +54,8 @@ connectBoxes(docBlock, docBlockEditor, '1');
 connectBoxes(docBlock, docBlockMd, '1');
 connectBoxes(docHeader, docBlockEditor, '1');
 
-var layout = new mxCompactTreeLayout(graph);
-//layout.interHierarchySpacing = 50;
-//layout.interRankCellSpacing = 50;
-//layout.disableEdgeStyle = false;
-//layout.parallelEdgeSpacing = 20;
+var layout = new mxHierarchicalLayout(graph);
+layout.interRankCellSpacing = 55;
 layout.execute(parent);
 ```
 [//]: # (block)
