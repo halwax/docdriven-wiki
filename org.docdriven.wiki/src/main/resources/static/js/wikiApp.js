@@ -405,10 +405,20 @@ Vue.component('doc-header',{
         <h1 class="doc-title" @click="onDivClick">{{getTitle(document.meta)}}</h1>
         <div class="doc-toolbar">
           <!--<i class="fa fa-fw fa-download fa-lg doc-selectable"></i>-->
-          <i class="fa fa-fw fa-eye fa-lg doc-selectable" v-show="isInEditMode" @click="switchEditMode"></i>
-          <i class="fa fa-fw fa-pencil-square-o fa-lg doc-selectable" v-show="!isInEditMode" @click="switchEditMode"></i>
-          <i class="fa fa-fw fa-pencil-square fa-lg doc-selectable"></i>
-          <i class="fa fa-fw fa-clipboard fa-lg doc-selectable" @click="copyMdToClipboard"></i>
+          <i class="fa fa-fw fa-eye fa-lg doc-selectable" 
+            v-show="isInEditMode"
+            @click="switchEditMode"></i>
+          <i class="fa fa-fw fa-pencil-square-o fa-lg doc-selectable" 
+            v-show="!isInEditMode" 
+            @click="switchEditMode"></i>
+          <i class="fa fa-fw fa-eye fa-lg doc-selectable" 
+            v-show="isInPageEditMode" 
+            @click="switchPageEditMode"></i>
+          <i class="fa fa-fw fa-pencil-square fa-lg doc-selectable"
+            v-show="!isInPageEditMode"
+            @click="switchPageEditMode"></i>
+          <i class="fa fa-fw fa-clipboard fa-lg doc-selectable" 
+            @click="copyMdToClipboard"></i>
         </div>
       </div>
       <div v-if="hasSummary(document.meta)" v-show="!isInEditMode"
@@ -434,7 +444,7 @@ Vue.component('doc-header',{
       </div>
     </div>
   `,
-  props:['document', 'isInEditMode', 'windowWidth'],
+  props:['document', 'isInEditMode', 'isInPageEditMode', 'windowWidth'],
   data: function() {
     return {
       showModal: false,
@@ -444,6 +454,9 @@ Vue.component('doc-header',{
   methods: {
     switchEditMode: function() {
       this.$emit('switchEditMode');
+    },
+    switchPageEditMode: function() {
+      this.$emit('switchPageEditMode')
     },
     onDivClick: function() {
       if(this.isInEditMode) {
@@ -507,45 +520,49 @@ Vue.component('doc-header',{
  * Main Component which manages a Document in a Wiki-like way.
  */
 Vue.component('doc-wiki', {
-  template: [
-    '<div class="doc-wiki">',
-    ' <header>',
-    '   <doc-breadcrumbs :path="path"/>',
-    ' </header>',
-    ' <main>',
-    '   <nav>',
-    '   </nav>',
-    '   <div class="doc-body">',
-    '     <doc-header :document="document"',
-    '       :isInEditMode="isInEditMode"',
-    '       :windowWidth="windowWidth"',
-    '       @switchEditMode="switchEditMode"',
-    '       @activateHeaderEditMode="triggerBlockEditMode"',
-    '       @metaChanged="changeMeta"',
-    '     />',
-    '     <div class="doc-content">',
-    '       <doc-block v-for="blockId in document.blockOrder" :key="blockId"',
-    '         :windowWidth="windowWidth"',
-    '         :isInEditMode="isInEditMode"',
-    '         :blocksInEditMode="document.blocksInEditMode"',
-    '         :block="document.blocks[blockId]"',
-    '         :first="document.blockOrder.indexOf(blockId)===0"',
-    '         :last="document.blockOrder.indexOf(blockId)===(document.blockOrder.length-1)"',
-    '         :path="path"',
-    '         @blockChanged="changeBlock"',
-    '         @changeBlockOrder="changeBlockOrder"',
-    '         @activateBlockEditMode="triggerBlockEditMode"',
-    '       />',
-    '     </div>',
-    '   </div>',
-    ' </main>',
-    '</div>'
-  ].join('\n'),
+  template: `
+    <div class="doc-wiki">
+      <header>
+        <doc-breadcrumbs :path="path"/>
+      </header>
+      <main>
+        <nav>
+        </nav>
+        <div class="doc-body">
+          <doc-header :document="document"
+            :isInEditMode="isInEditMode"
+            :windowWidth="windowWidth"
+            :isInPageEditMode="isInPageEditMode"
+            @switchEditMode="switchEditMode"
+            @switchPageEditMode="switchPageEditMode"
+            @activateHeaderEditMode="triggerBlockEditMode"
+            @metaChanged="changeMeta"
+          />
+          <div class="doc-content">
+            <doc-block v-for="blockId in document.blockOrder" :key="blockId"
+              :windowWidth="windowWidth"
+              :isInEditMode="isInEditMode"
+              :isInPageEditMode="isInPageEditMode"
+              :blocksInEditMode="document.blocksInEditMode"
+              :block="document.blocks[blockId]"
+              :first="document.blockOrder.indexOf(blockId)===0"
+              :last="document.blockOrder.indexOf(blockId)===(document.blockOrder.length-1)"
+              :path="path"
+              @blockChanged="changeBlock"
+              @changeBlockOrder="changeBlockOrder"
+              @activateBlockEditMode="triggerBlockEditMode"
+            />
+          </div>
+        </div>
+      </main>
+    </div>
+  `,
   props: ['windowWidth','path'],
   data: function() {
     var path = this.getDocResourcePath();
     return {
       isInEditMode: false,
+      isInPageEditMode: false,
       document: {
         meta: {},
         blocksInEditMode: [],
@@ -608,6 +625,12 @@ Vue.component('doc-wiki', {
     },
     switchEditMode: function() {
       this.isInEditMode = !this.isInEditMode;
+      this.isInPageEditMode = false;
+      this.document.blocksInEditMode.pop();
+    },
+    switchPageEditMode: function() {
+      this.isInPageEditMode = !this.isInPageEditMode;
+      this.isInEditMode = false;
       this.document.blocksInEditMode.pop();
     },
     changeBlock: function(changedBlock) {
