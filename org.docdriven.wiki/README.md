@@ -21,22 +21,22 @@ var parent = it.parent;
 
 var boxSize = {
     width: 130,
-    height: 60
+    height: 65
 }
 
 var insertBox = function(title, description) {
     return graph.insertVertex(parent, null, [
-            '<b>'+title+'</b><br/>',
+            '<b>'+title+'</b><hr/>',
             description
-        ].join('\n'), 
+        ].join(''), 
         0, 0, 
         boxSize.width, boxSize.height, 
-        'whiteSpace=wrap;');
+        'verticalAlign=middle;align=center;overflow=fill;whiteSpace=wrap;strokeWidth=2;rounded=1;');
 }
 
 var connectBoxes = function(box1, box2, label) {
     // var edgeStyle = mxConstants.STYLE_CURVED + '= 1';
-    var edgeStyle = '';
+    var edgeStyle = 'strokeWidth=1.3;rounded=1;';
     graph.insertEdge(parent, null, label, box1, box2, edgeStyle);
 }
 
