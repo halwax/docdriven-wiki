@@ -82,26 +82,23 @@ Vue.component('doc-block-markdown', {
             
             var graphDiv = document.createElement('div');
 
-            var wikiGraph = new WikiGraph();
-            var graph = new mxGraph(graphDiv);
-            wikiGraph.initStyle(graph);
-            graph.setHtmlLabels(true);
+            var graph = new WikiGraph(graphDiv);
+            graph.applyStyle();
 
             var parent = graph.getDefaultParent();
 
-            var mxGraphContext = {
-              mxGraph: graph,
-              wikiGraph:  wikiGraph,
+            var diagramContext = {
+              graph:  graph,
               parent: parent
             }
 
             graph.getModel().beginUpdate();
             try {
-              new Function('it', this.block.content)(mxGraphContext);
+              new Function('it', this.block.content)(diagramContext);
             } finally {
               graph.getModel().endUpdate();
             }
-            var svg = wikiGraph.mxGraphToSvg(graph);
+            var svg = graph.toSvg();
             graph.destroy();
             graphDiv.remove();
             return svg;

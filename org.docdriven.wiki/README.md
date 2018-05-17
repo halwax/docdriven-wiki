@@ -15,46 +15,29 @@ It's possible to register more wiki projects in the filesystem.
 ## Technical Structure
 [//]: # (block)
 ```mxgraph
-/** @type {MxGraph} */
-var graph = it.mxGraph;
-var parent = it.parent;
+let graph = it.graph;
+let parent = it.parent;
 
-var boxSize = {
+let boxSize = {
     width: 130,
     height: 65
 }
 
-var insertBox = function(title, description) {
-    return graph.insertVertex(parent, null, [
-            '<b>'+title+'</b><hr/>',
-            description
-        ].join(''), 
-        0, 0, 
-        boxSize.width, boxSize.height, 
-        'verticalAlign=middle;align=center;overflow=fill;whiteSpace=wrap;strokeWidth=2;rounded=1;');
-}
+var docWiki = graph.insertBox('doc-wiki', 'entry point for the application', boxSize);
+var docBreadCrumbs = graph.insertBox('doc-breadcrumbs', 'hash path links', boxSize);
+var docHeader = graph.insertBox('doc-header', 'toolbar, title, summary', boxSize);
+var docBlock = graph.insertBox('doc-block', 'content block', boxSize);
+var docBlockEditor = graph.insertBox('doc-block-editor', 'content editor', boxSize);
+var docBlockMd = graph.insertBox('doc-block-markdown', 'content markdown viewer', boxSize);
 
-var connectBoxes = function(box1, box2, label) {
-    // var edgeStyle = mxConstants.STYLE_CURVED + '= 1';
-    var edgeStyle = 'strokeWidth=1.3;rounded=1;';
-    graph.insertEdge(parent, null, label, box1, box2, edgeStyle);
-}
+graph.connectBoxes(docWiki, docBreadCrumbs, '1');
+graph.connectBoxes(docWiki, docHeader, '1');
+graph.connectBoxes(docWiki, docBlock, '0..*');
+graph.connectBoxes(docBlock, docBlockEditor, '1');
+graph.connectBoxes(docBlock, docBlockMd, '1');
+graph.connectBoxes(docHeader, docBlockEditor, '1');
 
-var docWiki = insertBox('doc-wiki', 'entry point for the application');
-var docBreadCrumbs = insertBox('doc-breadcrumbs', 'hash path links');
-var docHeader = insertBox('doc-header', 'toolbar, title, summary');
-var docBlock = insertBox('doc-block', 'content block');
-var docBlockEditor = insertBox('doc-block-editor', 'content editor');
-var docBlockMd = insertBox('doc-block-markdown', 'content markdown viewer')
-
-connectBoxes(docWiki, docBreadCrumbs, '1');
-connectBoxes(docWiki, docHeader, '1');
-connectBoxes(docWiki, docBlock, '0..*');
-connectBoxes(docBlock, docBlockEditor, '1');
-connectBoxes(docBlock, docBlockMd, '1');
-connectBoxes(docHeader, docBlockEditor, '1');
-
-var layout = new mxHierarchicalLayout(graph);
+var layout = new mxHierarchicalLayout(graph.getGraph());
 layout.interRankCellSpacing = 55;
 layout.execute(parent);
 ```

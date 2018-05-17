@@ -1,43 +1,66 @@
 class WikiGraph {
-  constructor() {
+
+  constructor(graphDiv) {
+    this.innerGraph = new mxGraph(graphDiv);
+    this.graphDiv = graphDiv;
+  }
+
+  getModel() {
+    return this.innerGraph.getModel();
+  }
+
+  getGraph() {
+    return this.innerGraph;
+  }
+
+  getDefaultParent() {
+    return this.innerGraph.getDefaultParent();
+  }
+
+  destroy() {
+    this.innerGraph.destroy();
+  }
+
+  applyStyle() {
     // Creates the default style for vertices
-    this.vertexStyle = [];
-    this.vertexStyle[mxConstants.STYLE_SHAPE] = mxConstants.SHAPE_RECTANGLE;
-    this.vertexStyle[mxConstants.STYLE_PERIMETER] = mxPerimeter.RectanglePerimeter;
-    this.vertexStyle[mxConstants.STYLE_STROKECOLOR] = 'black';
-    this.vertexStyle[mxConstants.STYLE_ROUNDED] = false;
-    this.vertexStyle[mxConstants.STYLE_FILLCOLOR] = 'white';
-    this.vertexStyle[mxConstants.STYLE_GRADIENTCOLOR] = 'white';
-    this.vertexStyle[mxConstants.STYLE_FONTCOLOR] = 'black';
-    this.vertexStyle[mxConstants.STYLE_ALIGN] = mxConstants.ALIGN_LEFT;
-    this.vertexStyle[mxConstants.STYLE_VERTICAL_ALIGN] = mxConstants.ALIGN_TOP;
-    this.vertexStyle[mxConstants.STYLE_FONTSIZE] = '12';
-    this.vertexStyle[mxConstants.STYLE_FONTSTYLE] = 0;
+    let vertexStyle = [];
+
+    vertexStyle[mxConstants.STYLE_SHAPE] = mxConstants.SHAPE_RECTANGLE;
+    vertexStyle[mxConstants.STYLE_PERIMETER] = mxPerimeter.RectanglePerimeter;
+    vertexStyle[mxConstants.STYLE_STROKECOLOR] = 'black';
+    vertexStyle[mxConstants.STYLE_ROUNDED] = false;
+    vertexStyle[mxConstants.STYLE_FILLCOLOR] = 'white';
+    vertexStyle[mxConstants.STYLE_GRADIENTCOLOR] = 'white';
+    vertexStyle[mxConstants.STYLE_FONTCOLOR] = 'black';
+    vertexStyle[mxConstants.STYLE_ALIGN] = mxConstants.ALIGN_LEFT;
+    vertexStyle[mxConstants.STYLE_VERTICAL_ALIGN] = mxConstants.ALIGN_TOP;
+    vertexStyle[mxConstants.STYLE_FONTSIZE] = '12';
+    vertexStyle[mxConstants.STYLE_FONTSTYLE] = 0;
 
     // Creates the default style for edges
-    this.edgeStyle = [];
-    this.edgeStyle[mxConstants.STYLE_EDGE] = mxEdgeStyle.ElbowConnector;
-    this.edgeStyle[mxConstants.STYLE_ENDARROW] = mxConstants.ARROW_BLOCK;
-    this.edgeStyle[mxConstants.STYLE_FONTCOLOR] = 'black';
-    this.edgeStyle[mxConstants.STYLE_STROKECOLOR] = 'black';
-    this.edgeStyle[mxConstants.STYLE_FONTSIZE] = '12';
-    this.edgeStyle[mxConstants.STYLE_ALIGN] = mxConstants.ALIGN_LEFT;
-    this.edgeStyle[mxConstants.STYLE_VERTICAL_ALIGN] = mxConstants.ALIGN_TOP;
+    let edgeStyle = [];
+    edgeStyle[mxConstants.STYLE_EDGE] = mxEdgeStyle.ElbowConnector;
+    edgeStyle[mxConstants.STYLE_ENDARROW] = mxConstants.ARROW_BLOCK;
+    edgeStyle[mxConstants.STYLE_FONTCOLOR] = 'black';
+    edgeStyle[mxConstants.STYLE_STROKECOLOR] = 'black';
+    edgeStyle[mxConstants.STYLE_FONTSIZE] = '12';
+    edgeStyle[mxConstants.STYLE_ALIGN] = mxConstants.ALIGN_LEFT;
+    edgeStyle[mxConstants.STYLE_VERTICAL_ALIGN] = mxConstants.ALIGN_TOP;
+
+    this.innerGraph.getStylesheet().putDefaultVertexStyle(vertexStyle);
+    this.innerGraph.getStylesheet().putDefaultEdgeStyle(edgeStyle);
+
+    this.innerGraph.setHtmlLabels(true);
   }
 
-  initStyle(graph) {
-    graph.getStylesheet().putDefaultVertexStyle(this.vertexStyle);
-    graph.getStylesheet().putDefaultEdgeStyle(this.edgeStyle);
-  }
-
-  mxGraphToSvg(graph) {
+  toSvg() {
     var background = '#ffffff';
     var scale = 1;
     var border = 1;
     
     var imgExport = new mxImageExport();
-    var bounds = graph.getGraphBounds();
-    var vs = graph.view.scale;
+    var bounds = this.innerGraph.getGraphBounds();
+    var vs = this.innerGraph.view.scale;
     // Prepares SVG document that holds the output
     var svgDoc = mxUtils.createXmlDocument();
     var root = (svgDoc.createElementNS != null) ?
@@ -75,8 +98,24 @@ class WikiGraph {
     svgCanvas.scale(scale / vs);
     // Displayed if a viewer does not support foreignObjects (which is needed to HTML output)
     svgCanvas.foAltText = '[Not supported by viewer]';
-    imgExport.drawState(graph.getView().getState(graph.model.root), svgCanvas);
+    imgExport.drawState(this.innerGraph.getView().getState(this.innerGraph.model.root), svgCanvas);
     return mxUtils.getXml(root);
+  }
+
+
+  insertBox(title, description, boxSize) {
+    return this.innerGraph.insertVertex(this.getDefaultParent(), null, [
+            '<b>'+title+'</b><hr/>',
+            description
+        ].join(''), 
+        0, 0, 
+        boxSize.width, boxSize.height, 
+        'verticalAlign=middle;align=center;overflow=fill;whiteSpace=wrap;strokeWidth=2;rounded=1;');
+  }
+
+  connectBoxes(box1, box2, label) {
+    var edgeStyle = 'strokeWidth=1.3;rounded=1;';
+    this.innerGraph.insertEdge(this.getDefaultParent(), null, label, box1, box2, edgeStyle);
   }
 }
 
