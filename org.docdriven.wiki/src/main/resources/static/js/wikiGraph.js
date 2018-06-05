@@ -102,15 +102,29 @@ class WikiGraph {
     return mxUtils.getXml(root);
   }
 
+  insertHtmlNode(htmlContent, boxSize, xOpt, yOpt) {
+    let x = _.isNil(xOpt) ? 0 : xOpt;
+    let y = _.isNil(yOpt) ? 0 : yOpt;
 
-  insertBox(title, description, boxSize) {
-    return this.innerGraph.insertVertex(this.getDefaultParent(), null, [
+    return this.innerGraph.insertVertex(this.getDefaultParent(), null, htmlContent, 
+        x, y, 
+        boxSize.width, boxSize.height, 
+        'verticalAlign=middle;align=center;overflow=fill;whiteSpace=wrap;strokeWidth=2;rounded=1;');    
+  }
+
+  insertBox(title, description, boxSize, xOpt, yOpt) {
+    return this.insertHtmlNode([
             '<b>'+title+'</b><hr/>',
             description
-        ].join(''), 
-        0, 0, 
-        boxSize.width, boxSize.height, 
-        'verticalAlign=middle;align=center;overflow=fill;whiteSpace=wrap;strokeWidth=2;rounded=1;');
+        ].join(''), boxSize,
+        xOpt, yOpt);
+  }
+
+  connectNodes(node1, node2, htmlLabel, strokeWidthOpt, additionalEdgeStyleOpt) {
+    let strokeWidth = _.isNil(strokeWidthOpt) ? 1.3 : strokeWidthOpt;
+    let additionalEdgeStyle = _.isNil(additionalEdgeStyleOpt) ? '' : additionalEdgeStyleOpt;
+    var edgeStyle = 'strokeWidth='+ strokeWidth + ';rounded=1;';
+    this.innerGraph.insertEdge(this.getDefaultParent(), null, htmlLabel, node1, node2, edgeStyle + additionalEdgeStyle);    
   }
 
   connectBoxes(box1, box2, label) {

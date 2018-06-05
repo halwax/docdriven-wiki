@@ -114,6 +114,9 @@ class WikiMd {
       } else if (token.type == 'list_item_open') {
 
         let bulletListObj = bulletListStack[bulletListStack.length-1];
+        if(_.isNil(bulletListObj)) {
+          return;
+        }
         let nextTextTokenIndex = this.findNextListItemTextToken(tokens, tokenIndex + 1);
         let taskItem = false;
         let taskTextToken = null;

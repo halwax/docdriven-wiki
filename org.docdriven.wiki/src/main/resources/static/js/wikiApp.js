@@ -217,7 +217,7 @@ Vue.component('doc-block-markdown', {
           if (link.match(fileExtensionPattern) && path.includes('#')) {
             var hashIndex = path.indexOf('#');
             linkPath = path.slice(0, hashIndex);
-            var hashPath = path.slice(hashIndex + 1, path.length)
+            var hashPath = path.slice(hashIndex + 1, path.length);
             var lastHashPathSegment = _.last(hashPath.split('/'));
             if (hashPath.length !== lastHashPathSegment.length) {
               hashPath = hashPath.slice(0, hashPath.length - (lastHashPathSegment.length + 1));
@@ -766,6 +766,18 @@ new Vue({
   },
 
   methods: {
+    normalizePath : function(path) {
+      let parts = path.split('/');
+      let stack = [];
+      for(let i=0; i<parts.length; i++) {
+        if(parts[i] == '..') {
+          stack.pop();
+        } else {
+          stack.push(parts[i]);
+        }
+      }
+      return stack.join('/');
+    },
     loadWindowWidth: _.debounce(function (event) {
       this.windowWidth = document.documentElement.clientWidth;
     }, 300),
@@ -773,6 +785,10 @@ new Vue({
       this.windowHeight = document.documentElement.clientHeight;
     }, 300),
     changePath: _.debounce(function (event) {
+      if(window.location.hash.includes('..')) {
+        window.location.hash = this.normalizePath(window.location.hash);
+        return;
+      }
       this.path = window.location.pathname + window.location.hash;
     }, 300)
   },
