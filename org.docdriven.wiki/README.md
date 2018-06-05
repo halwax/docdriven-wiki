@@ -30,12 +30,18 @@ let boxSize = {
     height: 65
 }
 
-var docWiki = graph.insertBox('doc-wiki', 'entry point for the application', boxSize);
+var docWiki = graph.insertBox('doc-wiki', 
+`entry point for 
+the application`, boxSize);
 var docBreadCrumbs = graph.insertBox('doc-breadcrumbs', 'hash path links', boxSize);
-var docHeader = graph.insertBox('doc-header', 'toolbar, title, summary', boxSize);
+var docHeader = graph.insertBox('doc-header', 
+`toolbar, title,
+summary`, boxSize);
 var docBlock = graph.insertBox('doc-block', 'content block', boxSize);
 var docBlockEditor = graph.insertBox('doc-block-editor', 'content editor', boxSize);
 var docBlockMd = graph.insertBox('doc-block-markdown', 'content markdown viewer', boxSize);
+
+graph.updateCellSize([docWiki, docBreadCrumbs, docHeader, docBlock, docBlockEditor, docBlockMd])
 
 graph.connectBoxes(docWiki, docBreadCrumbs, '1');
 graph.connectBoxes(docWiki, docHeader, '1');

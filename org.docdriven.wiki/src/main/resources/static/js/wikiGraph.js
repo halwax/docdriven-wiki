@@ -58,15 +58,15 @@ class WikiGraph {
     var background = '#ffffff';
     var scale = 1;
     var border = 1;
-    
+
     var imgExport = new mxImageExport();
     var bounds = this.innerGraph.getGraphBounds();
     var vs = this.innerGraph.view.scale;
     // Prepares SVG document that holds the output
     var svgDoc = mxUtils.createXmlDocument();
     var root = (svgDoc.createElementNS != null) ?
-          svgDoc.createElementNS(mxConstants.NS_SVG, 'svg') : svgDoc.createElement('svg');
-      
+      svgDoc.createElementNS(mxConstants.NS_SVG, 'svg') : svgDoc.createElement('svg');
+
     if (background != null) {
       if (root.style != null) {
         root.style.backgroundColor = background;
@@ -74,26 +74,26 @@ class WikiGraph {
         root.setAttribute('style', 'background-color:' + background);
       }
     }
-      
+
     if (svgDoc.createElementNS == null) {
-        root.setAttribute('xmlns', mxConstants.NS_SVG);
-        root.setAttribute('xmlns:xlink', mxConstants.NS_XLINK);
+      root.setAttribute('xmlns', mxConstants.NS_SVG);
+      root.setAttribute('xmlns:xlink', mxConstants.NS_XLINK);
     } else {
       // KNOWN: Ignored in IE9-11, adds namespace for each image element instead. No workaround.
       root.setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xlink', mxConstants.NS_XLINK);
     }
-    
+
     root.setAttribute('width', (Math.ceil(bounds.width * scale / vs) + 2 * border) + 'px');
     root.setAttribute('height', (Math.ceil(bounds.height * scale / vs) + 2 * border) + 'px');
     root.setAttribute('version', '1.1');
-    
-      // Adds group for anti-aliasing via transform
+
+    // Adds group for anti-aliasing via transform
     var group = (svgDoc.createElementNS != null) ?
-        svgDoc.createElementNS(mxConstants.NS_SVG, 'g') : svgDoc.createElement('g');
+      svgDoc.createElementNS(mxConstants.NS_SVG, 'g') : svgDoc.createElement('g');
     group.setAttribute('transform', 'translate(0.5,0.5)');
     root.appendChild(group);
     svgDoc.appendChild(root);
-      // Renders graph. Offset will be multiplied with state's scale when painting state.
+    // Renders graph. Offset will be multiplied with state's scale when painting state.
     var svgCanvas = new mxSvgCanvas2D(group);
     svgCanvas.translate(Math.floor((border / scale - bounds.x) / vs), Math.floor((border / scale - bounds.y) / vs));
     svgCanvas.scale(scale / vs);
@@ -103,29 +103,37 @@ class WikiGraph {
     return mxUtils.getXml(root);
   }
 
-  insertHtmlNode(htmlContent, boxSize, xOpt, yOpt) {
+  updateCellSize(cell) {
+    var cellArray = _.castArray(cell);
+    for (var i = 0; i < cellArray.length; i++) {
+      this.innerGraph.updateCellSize(cellArray[i]);
+    }
+  }
+
+  insertHtmlNode(htmlContent, boxSize, xOpt, yOpt, strokeWidthOpt) {
     let x = _.isNil(xOpt) ? 0 : xOpt;
     let y = _.isNil(yOpt) ? 0 : yOpt;
+    let strokeWidth = _.isNil(strokeWidthOpt) ? 1 : strokeWidthOpt;
 
-    return this.innerGraph.insertVertex(this.getDefaultParent(), null, htmlContent, 
-        x, y, 
-        boxSize.width, boxSize.height, 
-        'verticalAlign=middle;align=center;overflow=fill;whiteSpace=wrap;strokeWidth=2;rounded=1;');    
+    return this.innerGraph.insertVertex(this.getDefaultParent(), null, htmlContent,
+      x, y,
+      boxSize.width, boxSize.height,
+      'strokeWidth='+ strokeWidth + ';rounded=1;absoluteArcSize=1;arcSize=5;editable=0;spacing=4;');
   }
 
   insertBox(title, description, boxSize, xOpt, yOpt) {
     return this.insertHtmlNode([
-            '<b>'+title+'</b><hr/>',
-            description
-        ].join(''), boxSize,
-        xOpt, yOpt);
+      '<b>' + title + '</b><hr/>',
+      description
+    ].join(''), boxSize,
+      xOpt, yOpt);
   }
 
   connectNodes(node1, node2, htmlLabel, strokeWidthOpt, additionalEdgeStyleOpt) {
     let strokeWidth = _.isNil(strokeWidthOpt) ? 1.3 : strokeWidthOpt;
     let additionalEdgeStyle = _.isNil(additionalEdgeStyleOpt) ? '' : additionalEdgeStyleOpt;
-    let edgeStyle = 'strokeWidth='+ strokeWidth + ';rounded=1;';
-    this.innerGraph.insertEdge(this.getDefaultParent(), null, htmlLabel, node1, node2, edgeStyle + additionalEdgeStyle);    
+    let edgeStyle = 'strokeWidth=' + strokeWidth + ';rounded=1;';
+    this.innerGraph.insertEdge(this.getDefaultParent(), null, htmlLabel, node1, node2, edgeStyle + additionalEdgeStyle);
   }
 
   connectBoxes(box1, box2, label) {
