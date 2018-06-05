@@ -1,3 +1,5 @@
+import BreadCrumbs from './components/breadcrumbs.js';
+
 Vue.component('doc-project-info', {
   template: [
     '<div class="doc-project-info">',

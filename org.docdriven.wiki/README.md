@@ -12,6 +12,13 @@ and consistent documentation in a structured way.
 
 It's possible to register more wiki projects in the filesystem.
 
+## Site Structure
+
+[//]: # (block)
+```mxgraph
+
+```
+[//]: # (block)
 ## Technical Structure
 [//]: # (block)
 ```mxgraph
@@ -86,6 +93,7 @@ Frameworks currently in use ...
 - Monaco Editor - <https://github.com/Microsoft/monaco-editor>
 - Markdown It - <https://github.com/markdown-it/markdown-it>
 - FrontMatter - <https://github.com/jxson/front-matter>
+- Font Awesome 4.7 - <https://fontawesome.com/v4.7.0/>
 
 Frameworks that would be interesting to integrate ...
 
@@ -93,6 +101,10 @@ Frameworks that would be interesting to integrate ...
 - QuickMockup - <https://jdittrich.github.io/quickMockup/>
 - Remark - <https://github.com/wooorm/remark>
 - Unified - <https://github.com/unifiedjs/unified>
+
+Tools used ...
+
+- Font Awesome Favicon - <https://paulferrett.com/fontawesome-favicon/>
 
 ## Documentation Guide
 
@@ -116,6 +128,10 @@ function() {
 - StackEdit - <https://stackedit.io/>
 - Markdeep - <https://casual-effects.com/markdeep/>
 - <https://opensource.com/life/15/8/markup-lowdown>
+
+## Additional References
+
+- Save SVG as PNG - <http://dinbror.dk/blog/how-to-download-an-inline-svg-as-jpg-or-png/>
 [//]: # (block:executable)
 ```javascript
 var obj = {

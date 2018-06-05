@@ -15,30 +15,35 @@ var docDriven = new DocDriven();
  * Markdown Component
  */
 Vue.component('doc-block-markdown', {
-  template: [
-    '<div v-show="show">',
-    ' <div ref="renderContainer"></div>',
-    ' <div :class="{\'doc-block-code\' : block.codeBlock, \'doc-block-markdown\' : !block.codeBlock}">',
-    '   <div class="doc-block-layout">',
-    '     <div',
-    '       v-bind:class="{ \'doc-editable\': isInEditMode , \'doc-markdown\': true}"',
-    '       v-html="compiledMarkdown(block)"',
-    '       @click="onDivClick"',
-    '     />',
-    '     <div class="doc-block-toolbar"',
-    '      v-show="isExecutable(block) && !isInEditMode">',
-    '       <i class="fa fa-play-circle-o fa-lg doc-selectable"',
-    '        aria-hidden="true"',
-    '        @click="executeCode"',
-    '       />',
-    '     </div>',
-    '   </div>',
-    ' </div>',
-    ' <div v-show="executed && !isInEditMode" class="doc-markdown">',
-    '   <pre class="doc-block-code"><code class="language-json" v-html="executionResult"/></pre>',
-    ' </div>',
-    '</div>'
-  ].join('\n'),
+  template: `
+    <div v-show="show">
+     <div ref="renderContainer"></div>
+     <div :class="{'doc-block-code' : block.codeBlock, 'doc-block-markdown' : !block.codeBlock}">
+       <div class="doc-block-layout">
+         <div
+           v-bind:class="{ 'doc-editable': isInEditMode , 'doc-markdown': true}"
+           v-html="compiledMarkdown(block)"
+           @click="onDivClick"
+         />
+         <div class="doc-block-toolbar">
+           <i class="fa fa-play-circle-o fa-lg doc-selectable"
+            v-show="isExecutable(block) && !isInEditMode"
+            aria-hidden="true"
+            @click="executeCode"
+           />
+           <i class="fa fa-download fa-lg doc-selectable"
+            v-show="isSvg(block) && !isInEditMode"
+            aria-hidden="true"
+            @click="downloadAsPng"
+           />
+         </div>
+       </div>
+     </div>
+     <div v-show="executed && !isInEditMode" class="doc-markdown">
+       <pre class="doc-block-code"><code class="language-json" v-html="executionResult"/></pre>
+     </div>
+    </div>
+  `,
   props: ['show', 'block', 'isInEditMode', 'path'],
   data : function() {
     return {
@@ -51,6 +56,32 @@ Vue.component('doc-block-markdown', {
       if(this.isInEditMode) {
         this.$emit('activateBlockEditMode');
       }
+    },
+    downloadAsPng: function(e) {
+      let svgElement = this.$el.querySelector('svg');
+      let svg = new XMLSerializer().serializeToString(svgElement);
+      let svgImage = new Image();
+      svgImage.onload = function() {
+
+        let svgBox = svgElement.getBBox();
+        let canvasElement = document.createElement('canvas');
+
+        canvasElement.width = svgImage.width;
+        canvasElement.height = svgImage.height;
+        canvasElement.getContext('2d').drawImage(svgImage, 0, 0);
+        
+        let pngDataUrl = canvasElement.toDataURL('image/png');
+        
+        let pngDataUrlLink = document.createElement('a');
+
+        pngDataUrlLink.href = pngDataUrl;
+        pngDataUrlLink.target = '_blank';
+        pngDataUrlLink.download = 'image.png';
+        document.body.appendChild(pngDataUrlLink);
+        pngDataUrlLink.click();
+        document.body.removeChild(pngDataUrlLink);
+      };
+      svgImage.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     },
     executeCode: function(e) {
       var jsonResult = '';
@@ -179,6 +210,9 @@ Vue.component('doc-block-markdown', {
     },
     isExecutable: function(block) {
       return block.blockParameter === 'executable';
+    },
+    isSvg: function(block) {
+      return block.language === 'graphviz' || block.language === 'mxgraph'
     }
   }
 });
