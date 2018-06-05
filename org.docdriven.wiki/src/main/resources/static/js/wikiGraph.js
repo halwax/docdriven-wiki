@@ -3,6 +3,7 @@ class WikiGraph {
   constructor(graphDiv) {
     this.innerGraph = new mxGraph(graphDiv);
     this.graphDiv = graphDiv;
+    this.asyncLayout = false;
   }
 
   getModel() {
@@ -123,13 +124,19 @@ class WikiGraph {
   connectNodes(node1, node2, htmlLabel, strokeWidthOpt, additionalEdgeStyleOpt) {
     let strokeWidth = _.isNil(strokeWidthOpt) ? 1.3 : strokeWidthOpt;
     let additionalEdgeStyle = _.isNil(additionalEdgeStyleOpt) ? '' : additionalEdgeStyleOpt;
-    var edgeStyle = 'strokeWidth='+ strokeWidth + ';rounded=1;';
+    let edgeStyle = 'strokeWidth='+ strokeWidth + ';rounded=1;';
     this.innerGraph.insertEdge(this.getDefaultParent(), null, htmlLabel, node1, node2, edgeStyle + additionalEdgeStyle);    
   }
 
   connectBoxes(box1, box2, label) {
-    var edgeStyle = 'strokeWidth=1.3;rounded=1;';
+    let edgeStyle = 'strokeWidth=1.3;rounded=1;';
     this.innerGraph.insertEdge(this.getDefaultParent(), null, label, box1, box2, edgeStyle);
+  }
+
+  elkLayout() {
+    let layout = new mxElkLayout(this.innerGraph);
+    layout.execute(this.getDefaultParent(), this.onUpdateGraph);
+    this.asyncLayout = true;
   }
 }
 

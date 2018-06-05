@@ -26,7 +26,7 @@ Vue.component('doc-block-markdown', {
        <div class="doc-block-layout">
          <div
            v-bind:class="{ 'doc-editable': isInEditMode , 'doc-markdown': true}"
-           v-html="compiledMarkdown(block)"
+           v-html="htmlContent"
            @click="onDivClick"
          />
          <div class="doc-block-toolbar">
@@ -55,12 +55,19 @@ Vue.component('doc-block-markdown', {
   `,
   props: ['show', 'block', 'isInEditMode', 'path'],
   data: function () {
+    let htmlContent = this.compileBlockHtml(this.block);
     return {
       executionResult: '',
       executed: false,
       showModal: false,
       modalText: '',
-      clipboardData: ''
+      clipboardData: '',
+      htmlContent: htmlContent
+    }
+  },
+  watch: {
+    block: function(block) {
+      this.htmlContent = this.compileBlockHtml(block);
     }
   },
   methods: {
@@ -134,7 +141,19 @@ Vue.component('doc-block-markdown', {
       this.executionResult = hljs.highlight('json', jsonResult).value;
       this.executed = true;
     },
-    compiledMarkdown: function (block) {
+    updateBlockHtmlSvg(graphDiv, graph) {
+      var svg = this.toSvg(graphDiv, graph, true);
+      this.htmlContent = svg;
+    },
+    toSvg: function(graphDiv, graph, destroy) {
+      var svg = graph.toSvg();
+      if(destroy) {
+        graph.destroy();
+        graphDiv.remove();
+      }
+      return svg;
+    },
+    compileBlockHtml: function (block) {
       var path = this.path;
       if (block.codeBlock) {
         /*
@@ -147,9 +166,13 @@ Vue.component('doc-block-markdown', {
           try {
 
             var graphDiv = document.createElement('div');
+            let component = this;
 
             var graph = new WikiGraph(graphDiv);
             graph.applyStyle();
+            graph.onUpdateGraph = function() {
+              component.updateBlockHtmlSvg(graphDiv, graph);
+            }
 
             var parent = graph.getDefaultParent();
 
@@ -164,10 +187,9 @@ Vue.component('doc-block-markdown', {
             } finally {
               graph.getModel().endUpdate();
             }
-            var svg = graph.toSvg();
-            graph.destroy();
-            graphDiv.remove();
-            return svg;
+
+            return this.toSvg(graphDiv, graph, !graph.asyncLayout);
+
           } catch (ex) {
             console.error("error executing code", ex.message);
           }
