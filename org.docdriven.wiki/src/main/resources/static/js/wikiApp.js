@@ -45,6 +45,11 @@ Vue.component('doc-block-markdown', {
             aria-hidden="true"
             @click="copyAsHtml"
            />
+           <i class="fa fa-code fa-lg doc-selectable"
+            v-show="isSvg(block) && !isInEditMode"
+            aria-hidden="true"
+            @click="copyCode"
+           />
          </div>
        </div>
      </div>
@@ -62,7 +67,8 @@ Vue.component('doc-block-markdown', {
       showModal: false,
       modalText: '',
       clipboardData: '',
-      htmlContent: htmlContent
+      htmlContent: htmlContent,
+      copyFormat: null
     }
   },
   watch: {
@@ -85,8 +91,27 @@ Vue.component('doc-block-markdown', {
 
       var dt = new clipboard.DT();
       dt.setData("text/plain", this.clipboardData);
-      dt.setData("text/html", this.clipboardData);
+      if(this.copyFormat !== 'text/plain') {
+        dt.setData("text/html", this.clipboardData);
+      }
       clipboard.write(dt);
+    },
+    copyCode: function(e) {
+      let component = this;
+      
+      if (this.block.language == 'mxgraph') {
+        let copyMxGraphXml = function(graph) {
+          component.showModal = true;
+          component.modalText = 'Copy mxGraph to clipboard on OK.';
+          component.clipboardData = graph.getXml();
+          component.copyFormat = 'text/plain';
+        }
+
+        let graph = this.blockToGraph(this.block, copyMxGraphXml)
+        if(!graph.asyncLayout) {
+          copyMxGraphXml(graph);
+        }
+      }
     },
     copyAsHtml: function (e) {
       let component = this;
@@ -128,6 +153,31 @@ Vue.component('doc-block-markdown', {
         document.body.removeChild(pngDataUrlLink);
       });
     },
+    blockToGraph(block, onUpdateGraph) {
+      var graphDiv = document.createElement('div');
+      let component = this;
+
+      let graph = new WikiGraph(graphDiv);
+      graph.applyStyle();
+      graph.onUpdateGraph = function() {
+        onUpdateGraph(graph);
+      }
+
+      var parent = graph.getDefaultParent();
+
+      var diagramContext = {
+        graph: graph,
+        parent: parent
+      }
+
+      graph.getModel().beginUpdate();
+      try {
+        new Function('it', block.content)(diagramContext);
+      } finally {
+        graph.getModel().endUpdate();
+      }
+      return graph;
+    },
     executeCode: function (e) {
       var jsonResult = '';
       try {
@@ -144,20 +194,21 @@ Vue.component('doc-block-markdown', {
       this.executionResult = hljs.highlight('json', jsonResult).value;
       this.executed = true;
     },
-    updateBlockHtmlSvg(graphDiv, graph) {
-      var svg = this.toSvg(graphDiv, graph, true);
+    updateBlockHtmlSvg(graph) {
+      var svg = this.toSvg(graph, true);
       this.htmlContent = svg;
     },
-    toSvg: function(graphDiv, graph, destroy) {
+    toSvg: function(graph, destroy) {
       var svg = graph.toSvg();
       if(destroy) {
         graph.destroy();
-        graphDiv.remove();
+        graph.graphDiv.remove();
       }
       return svg;
     },
     compileBlockHtml: function (block) {
-      var path = this.path;
+      let component = this;
+      let path = this.path;
       if (block.codeBlock) {
         /*
         markdown =  '```' + 
@@ -168,30 +219,10 @@ Vue.component('doc-block-markdown', {
         if (block.language == 'mxgraph') {
           try {
 
-            var graphDiv = document.createElement('div');
-            let component = this;
-
-            var graph = new WikiGraph(graphDiv);
-            graph.applyStyle();
-            graph.onUpdateGraph = function() {
-              component.updateBlockHtmlSvg(graphDiv, graph);
-            }
-
-            var parent = graph.getDefaultParent();
-
-            var diagramContext = {
-              graph: graph,
-              parent: parent
-            }
-
-            graph.getModel().beginUpdate();
-            try {
-              new Function('it', this.block.content)(diagramContext);
-            } finally {
-              graph.getModel().endUpdate();
-            }
-
-            return this.toSvg(graphDiv, graph, !graph.asyncLayout);
+            let graph = this.blockToGraph(this.block, function(graph) {
+              component.updateBlockHtmlSvg(graph);
+            });
+            return this.toSvg(graph, !graph.asyncLayout);
 
           } catch (ex) {
             console.error("error executing code", ex.message);

@@ -9,6 +9,7 @@
 		<add as="fillColor" value="#ffffff"/>
 		<add as="strokeColor" value="#000000"/>
 		<add as="fontColor" value="#000000"/>
+    <add as="html" value="1"/>
 	</add>
 	<add as="defaultEdge">
 		<add as="shape" value="connector"/>
@@ -21,6 +22,7 @@
 		<add as="rounded" value="1"/>
 		<add as="strokeColor" value="#000000"/>
 		<add as="fontColor" value="#000000"/>
+    <add as="html" value="1"/>
 	</add>
 	<add as="text">
 		<add as="fillColor" value="none"/>

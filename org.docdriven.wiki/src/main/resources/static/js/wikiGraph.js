@@ -22,6 +22,15 @@ class WikiGraph {
     return this.innerGraph.getDefaultParent();
   }
 
+  getXmlNode() {
+    var enc = new mxCodec();
+    return enc.encode(this.innerGraph.getModel());
+  }
+
+  getXml() {
+    return mxUtils.getXml(this.getXmlNode());
+  }
+
   destroy() {
     this.innerGraph.destroy();
   }
