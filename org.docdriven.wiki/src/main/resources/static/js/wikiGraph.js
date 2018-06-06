@@ -4,6 +4,10 @@ class WikiGraph {
     this.innerGraph = new mxGraph(graphDiv);
     this.graphDiv = graphDiv;
     this.asyncLayout = false;
+    this.title = null;
+    this.titleCell = null;
+    this.legend = null;
+    this.legendCell = null;
   }
 
   getModel() {
@@ -50,6 +54,10 @@ class WikiGraph {
 
     this.innerGraph.getStylesheet().putDefaultVertexStyle(vertexStyle);
     this.innerGraph.getStylesheet().putDefaultEdgeStyle(edgeStyle);
+
+    var labelStyle = new Object();
+    labelStyle[mxConstants.STYLE_STROKE_OPACITY] = 0;
+    this.innerGraph.getStylesheet().putCellStyle('LABEL', labelStyle);    
 
     this.innerGraph.setHtmlLabels(true);
   }
@@ -136,6 +144,14 @@ class WikiGraph {
       xOpt, yOpt);
   }
 
+  setTitle(title) {
+    this.title = title;
+  }
+
+  setLegend(legend) {
+    this.legend = legend;
+  }
+
   connectNodes(node1, node2, htmlLabel, strokeWidthOpt, additionalEdgeStyleOpt) {
     let strokeWidth = _.isNil(strokeWidthOpt) ? 1.3 : strokeWidthOpt;
     let additionalEdgeStyle = _.isNil(additionalEdgeStyleOpt) ? '' : additionalEdgeStyleOpt;
@@ -154,6 +170,50 @@ class WikiGraph {
       layout.interRankCellSpacing = interRankCellSpacingOpt;
     }
     layout.execute(this.getDefaultParent());
+    this.finishGraph();
+  }
+
+  getHeight() {
+    let parent = this.getDefaultParent();
+    let childCount = this.innerGraph.model.getChildCount(parent);
+    let maxYPosition = 0;
+    for(let i = 0; i < childCount; i++) {
+      let childCell = this.innerGraph.model.getChildAt(parent, i);
+      let geometry = childCell.getGeometry();
+      maxYPosition = Math.max(maxYPosition, geometry.y + geometry.height);
+    }
+    return maxYPosition;    
+  }
+
+  finishGraph() {
+    if(!_.isNil(this.title)) {
+      let titleCell = this.innerGraph.insertVertex(this.getDefaultParent(), null,
+        '<div style="text-decoration: underline">'+this.title+'</div>',
+        0, 0, 10, 10, 'LABEL');
+      this.updateCellSize(titleCell);
+      let geometry = titleCell.getGeometry();
+      this.innerGraph.translateCell(titleCell, 0, - geometry.height - 10);  
+      this.titleCell = titleCell;
+    }
+    if(!_.isNil(this.legend)) {
+      let graphHeight = this.getHeight();
+      let bounds = this.innerGraph.getGraphBounds();
+      let legendCell = this.innerGraph.insertVertex(this.getDefaultParent(), null,
+        this.legend, 
+        0, graphHeight + 10, 0, 0, 'LABEL');
+      this.updateCellSize(legendCell);
+      this.legendCell = legendCell;
+    }
+  }
+
+  updateGraphAfterLayout() {
+    if(!_.isNil(this.titleCell)) {
+      this.titleCell.removeFromParent();
+    }
+    if(!_.isNil(this.legendCell)) {
+      this.legendCell.removeFromParent();
+    }
+    finishGraph();
   }
 
   elkLayout(directionOpt) {
@@ -161,7 +221,12 @@ class WikiGraph {
     if(!_.isNil(directionOpt)) {
       layout.direction = directionOpt;
     }
-    layout.execute(this.getDefaultParent(), this.onUpdateGraph);
+    layout.execute(this.getDefaultParent(), function() {
+      this.updateGraphAfterLayout();
+      if(!_.isNil(this.onUpdateGraph)) {
+        this.onUpdateGraph();
+      }
+    }.bind(this));
     this.asyncLayout = true;
   }
 }
