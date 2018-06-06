@@ -66,9 +66,12 @@ Vue.component('doc-block-markdown', {
     }
   },
   watch: {
-    block: function(block) {
-      this.htmlContent = this.compileBlockHtml(block);
-    }
+    block: {
+      handler : function(block) {
+        this.htmlContent = this.compileBlockHtml(block);
+      },
+      deep: true
+    } 
   },
   methods: {
     onDivClick: function (e) {
