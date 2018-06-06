@@ -21,4 +21,9 @@ public class HomeController {
 		return "projects";
 	}
 
+	@GetMapping("/graph")
+	public String graphEditor() {
+		return "graphEditor";
+	}
+
 }

@@ -213,7 +213,7 @@ class WikiGraph {
     if(!_.isNil(this.legendCell)) {
       this.legendCell.removeFromParent();
     }
-    finishGraph();
+    this.finishGraph();
   }
 
   elkLayout(directionOpt) {
