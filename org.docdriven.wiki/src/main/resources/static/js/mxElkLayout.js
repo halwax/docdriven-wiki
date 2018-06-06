@@ -14,6 +14,51 @@ mxElkLayout.prototype.constructor = mxElkLayout;
  */
 mxElkLayout.prototype.algorithmName = null;
 
+mxElkLayout.prototype.direction = null;
+
+/**
+ * Uses canvas.measureText to compute and return the width of the given text of given font in pixels.
+ * 
+ * @param {String} text The text to be rendered.
+ * @param {String} font The css font descriptor that text is to be rendered with (e.g. "bold 14px verdana").
+ * 
+ * @see https://stackoverflow.com/questions/118241/calculate-text-width-with-javascript/21015393#21015393
+ */
+mxElkLayout.prototype.getTextWidth = function(text, font) {
+  // re-use canvas object for better performance
+  var canvas = this.getTextWidth.canvas || (this.getTextWidth.canvas = document.createElement("canvas"));
+  var context = canvas.getContext("2d");
+  context.font = font;
+  var metrics = context.measureText(text);
+  return metrics.width;
+}
+
+mxElkLayout.prototype.getTextHeight = function(style) {
+ return parseInt(style.fontSize, 10);
+}
+
+mxElkLayout.prototype.getDefaultStyle = function() {
+ var div = this.getDefaultStyle.div;
+ if(_.isNil(div)) {
+   this.getDefaultStyle.div = document.createElement('div');
+   div = this.getDefaultStyle.div;
+   document.body.appendChild(div);
+ }
+ return window.getComputedStyle(div);
+}
+
+mxElkLayout.prototype.getTextBox = function(text, style) {
+ return {
+   text: text,
+   width: this.getTextWidth(text, style.font),
+   height: this.getTextHeight(style)
+ };
+}
+
+mxElkLayout.prototype.getDefaultTextBox = function(text) {
+ return this.getTextBox(text, this.getDefaultStyle());
+}
+
 /**
  * Function: execute
  * 
@@ -29,6 +74,10 @@ mxElkLayout.prototype.execute = function (parent, onUpdateGraph) {
   elkObj.layoutOptions = {
     'elk.algorithm': this.algorithmName
   };
+
+  if(this.direction!==undefined && this.direction!==null) {
+    elkObj.layoutOptions['elk.direction'] = this.direction;
+  }
 
   var childCount = model.getChildCount(parent);
   for (var i = 0; i < childCount; i++) {
@@ -47,7 +96,17 @@ mxElkLayout.prototype.execute = function (parent, onUpdateGraph) {
         id: cell.id,
         sources: [sourceCell.id],
         targets: [targetCell.id],
+        labels: []
       };
+      if(cell.value!==undefined && cell.value!==null) {
+        var edgeLabelBox = this.getDefaultTextBox(cell.value);
+
+        elkEdge.labels.push({
+          text: cell.value,
+          width: edgeLabelBox.width,
+          height: edgeLabelBox.height
+        })
+      }
       elkObj.edges.push(elkEdge);
     }
   }

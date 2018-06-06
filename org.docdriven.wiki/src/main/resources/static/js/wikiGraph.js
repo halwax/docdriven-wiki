@@ -110,15 +110,22 @@ class WikiGraph {
     }
   }
 
-  insertHtmlNode(htmlContent, boxSize, xOpt, yOpt, strokeWidthOpt) {
+  insertHtmlNode(htmlContent, boxSizeOpt, xOpt, yOpt, strokeWidthOpt) {
+    let boxSize = _.isNil(boxSizeOpt) ? {width: 10, height: 10} : boxSizeOpt;
     let x = _.isNil(xOpt) ? 0 : xOpt;
     let y = _.isNil(yOpt) ? 0 : yOpt;
     let strokeWidth = _.isNil(strokeWidthOpt) ? 1 : strokeWidthOpt;
 
-    return this.innerGraph.insertVertex(this.getDefaultParent(), null, htmlContent,
-      x, y,
-      boxSize.width, boxSize.height,
-      'strokeWidth='+ strokeWidth + ';rounded=1;absoluteArcSize=1;arcSize=5;editable=0;spacing=4;');
+    let nodeCell = this.innerGraph.insertVertex(this.getDefaultParent(), null, htmlContent,
+        x, y,
+        boxSize.width, boxSize.height,
+        'strokeWidth='+ strokeWidth + ';rounded=1;absoluteArcSize=1;arcSize=5;editable=0;spacing=4;');
+
+    if(_.isNil(boxSizeOpt)) {
+      this.updateCellSize(nodeCell);
+    }
+
+    return nodeCell;
   }
 
   insertBox(title, description, boxSize, xOpt, yOpt) {
@@ -141,8 +148,19 @@ class WikiGraph {
     this.innerGraph.insertEdge(this.getDefaultParent(), null, label, box1, box2, edgeStyle);
   }
 
-  elkLayout() {
+  hierarchicalLayout(interRankCellSpacingOpt) {
+    var layout = new mxHierarchicalLayout(this.innerGraph);
+    if(!_.isNil(interRankCellSpacingOpt)) {
+      layout.interRankCellSpacing = interRankCellSpacingOpt;
+    }
+    layout.execute(this.getDefaultParent());
+  }
+
+  elkLayout(directionOpt) {
     let layout = new mxElkLayout(this.innerGraph);
+    if(!_.isNil(directionOpt)) {
+      layout.direction = directionOpt;
+    }
     layout.execute(this.getDefaultParent(), this.onUpdateGraph);
     this.asyncLayout = true;
   }
