@@ -6,18 +6,14 @@ summary: 'Documentation, Inspiration and Concepts behind Doc Driven Wiki.'
 [//]: # (block)
 ## Abstract
 
-Documentation often gets out of sync and is spread along many locations in multiple versions.
-This project intends to provide tools, concepts and ideas to better provide up to date
-and consistent documentation in a structured way.
+Documentation often spreads over many locations and is provided in various formats like word, excel, visio. It is
+hard to maintain and tends to get outdated pretty soon. This project intends to provide a simple tool stack, concepts
+and ideas to enable an up to date and consistent documentation.
 
-It's possible to register more wiki projects in the filesystem.
+This project stands on the shoulders of giants by reuse and integration of existing frameworks (see technical base)
+and is also inspired by others (see similar products).
 
-## Site Structure
 
-[//]: # (block)
-```mxgraph
-
-```
 [//]: # (block)
 ## Technical Structure
 [//]: # (block)
