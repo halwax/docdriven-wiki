@@ -178,7 +178,7 @@ Vue.component('doc-block-markdown', {
         if(block.language === 'mxgraph') {        
           new Function('it', block.content)(diagramContext);
         } else if(block.language === 'mxgraphXML') {
-          graph.setXmlNode(block.content);
+          graph.setXml(block.content);
         }
       } finally {
         graph.getModel().endUpdate();
@@ -315,7 +315,7 @@ Vue.component('doc-block-markdown', {
       return block.blockParameter === 'executable';
     },
     isSvg: function (block) {
-      return block.language === 'graphviz' || block.language === 'mxgraph'
+      return _.includes(['graphviz', 'mxgraph', 'mxgraphXML'], block.language)
     }
   }
 });

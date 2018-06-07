@@ -33,7 +33,7 @@ class WikiGraph {
 
   setXml(xml) {
     let xmlNode = mxUtils.parseXml(xml);
-    setXmlNode(xmlNode);
+    this.setXmlNode(xmlNode);
   }
 
   setXmlNode(xmlNode) {
