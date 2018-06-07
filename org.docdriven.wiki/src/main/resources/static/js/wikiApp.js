@@ -73,11 +73,11 @@ Vue.component('doc-block-markdown', {
   },
   watch: {
     block: {
-      handler : function(block) {
+      handler: function (block) {
         this.htmlContent = this.compileBlockHtml(block);
       },
       deep: true
-    } 
+    }
   },
   methods: {
     onDivClick: function (e) {
@@ -85,22 +85,22 @@ Vue.component('doc-block-markdown', {
         this.$emit('activateBlockEditMode');
       }
     },
-    acceptCopyModal: function() {
+    acceptCopyModal: function () {
       this.showModal = false;
       this.modalText = '';
 
       var dt = new clipboard.DT();
       dt.setData("text/plain", this.clipboardData);
-      if(this.copyFormat !== 'text/plain') {
+      if (this.copyFormat !== 'text/plain') {
         dt.setData("text/html", this.clipboardData);
       }
       clipboard.write(dt);
     },
-    copyCode: function(e) {
+    copyCode: function (e) {
       let component = this;
-      
+
       if (this.block.language == 'mxgraph') {
-        let copyMxGraphXml = function(graph) {
+        let copyMxGraphXml = function (graph) {
           component.showModal = true;
           component.modalText = 'Copy mxGraph to clipboard on OK.';
           component.clipboardData = graph.getXml();
@@ -108,7 +108,7 @@ Vue.component('doc-block-markdown', {
         }
 
         let graph = this.blockToGraph(this.block, copyMxGraphXml)
-        if(!graph.asyncLayout) {
+        if (!graph.asyncLayout) {
           copyMxGraphXml(graph);
         }
       }
@@ -154,13 +154,16 @@ Vue.component('doc-block-markdown', {
       });
     },
     blockToGraph(block, onUpdateGraph) {
+
       var graphDiv = document.createElement('div');
       let component = this;
 
       let graph = new WikiGraph(graphDiv);
       graph.applyStyle();
-      graph.onUpdateGraph = function() {
-        onUpdateGraph(graph);
+      graph.onUpdateGraph = function () {
+        if(!_.isNil(onUpdateGraph)) {
+          onUpdateGraph(graph);
+        }
       }
 
       var parent = graph.getDefaultParent();
@@ -172,7 +175,11 @@ Vue.component('doc-block-markdown', {
 
       graph.getModel().beginUpdate();
       try {
-        new Function('it', block.content)(diagramContext);
+        if(block.language === 'mxgraph') {        
+          new Function('it', block.content)(diagramContext);
+        } else if(block.language === 'mxgraphXML') {
+          graph.setXmlNode(block.content);
+        }
       } finally {
         graph.getModel().endUpdate();
       }
@@ -198,9 +205,9 @@ Vue.component('doc-block-markdown', {
       var svg = this.toSvg(graph, true);
       this.htmlContent = svg;
     },
-    toSvg: function(graph, destroy) {
+    toSvg: function (graph, destroy) {
       var svg = graph.toSvg();
-      if(destroy) {
+      if (destroy) {
         graph.destroy();
         graph.graphDiv.remove();
       }
@@ -216,10 +223,15 @@ Vue.component('doc-block-markdown', {
         markdown + '\n' +
         '```';
         */
-        if (block.language == 'mxgraph') {
+        if (block.language == 'mxgraphXML') {
+
+          let graph = this.blockToGraph(this.block);
+          return this.toSvg(graph, !graph.asyncLayout);
+
+        } else if (block.language == 'mxgraph') {
           try {
 
-            let graph = this.blockToGraph(this.block, function(graph) {
+            let graph = this.blockToGraph(this.block, function (graph) {
               component.updateBlockHtmlSvg(graph);
             });
             return this.toSvg(graph, !graph.asyncLayout);
@@ -464,6 +476,8 @@ Vue.component('doc-block-editor', {
         return 'plaintext';
       } else if (editorLanguage == 'mxgraph') {
         return 'javascript';
+      } else if (editorLanguage == 'mxgraphXML') {
+        return 'xml';
       }
       return editorLanguage;
     }
@@ -574,7 +588,7 @@ Vue.component('doc-header', {
     }
   },
   methods: {
-    acceptCopyModal: function() {
+    acceptCopyModal: function () {
 
       this.showModal = false;
       this.modalText = '';
@@ -822,11 +836,11 @@ new Vue({
   },
 
   methods: {
-    normalizePath : function(path) {
+    normalizePath: function (path) {
       let parts = path.split('/');
       let stack = [];
-      for(let i=0; i<parts.length; i++) {
-        if(parts[i] == '..') {
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i] == '..') {
           stack.pop();
         } else {
           stack.push(parts[i]);
@@ -841,7 +855,7 @@ new Vue({
       this.windowHeight = document.documentElement.clientHeight;
     }, 300),
     changePath: _.debounce(function (event) {
-      if(window.location.hash.includes('..')) {
+      if (window.location.hash.includes('..')) {
         window.location.hash = this.normalizePath(window.location.hash);
         return;
       }

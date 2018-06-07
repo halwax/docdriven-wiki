@@ -31,6 +31,17 @@ class WikiGraph {
     return mxUtils.getXml(this.getXmlNode());
   }
 
+  setXml(xml) {
+    let xmlNode = mxUtils.parseXml(xml);
+    setXmlNode(xmlNode);
+  }
+
+  setXmlNode(xmlNode) {
+    let decoder = new mxCodec(xmlNode);
+    let documentNode = xmlNode.documentElement;
+    decoder.decode(documentNode, this.innerGraph.getModel());
+  }
+
   destroy() {
     this.innerGraph.destroy();
   }
