@@ -6,7 +6,52 @@ let taskRegex = /\[[ x\?~]\]/;
 
 class WikiMd {
 
-  constructor(md) {
+  constructor() {
+
+    var md = window.markdownit({
+      html: true,
+      xhtmlOut: true,
+      highlight: function (str, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+          try {
+            return hljs.highlight(lang, str).value;
+          } catch (__) { }
+        }
+
+        return ''; // use external default escaping
+      },
+      replaceLink: function (link, env) {
+
+        if (link.startsWith('https://') || link.startsWith('http://')) {
+          return link;
+        }
+
+        var linkPath = path;
+        var fileExtensionPattern = /\.[0-9a-z]+$/i;
+        if (link.match(fileExtensionPattern) && path.includes('#')) {
+          var hashIndex = path.indexOf('#');
+          linkPath = path.slice(0, hashIndex);
+          var hashPath = path.slice(hashIndex + 1, path.length);
+          var lastHashPathSegment = _.last(hashPath.split('/'));
+          if (hashPath.length !== lastHashPathSegment.length) {
+            hashPath = hashPath.slice(0, hashPath.length - (lastHashPathSegment.length + 1));
+          }
+          linkPath = '/api/files' + linkPath + '/' + hashPath + '/' + link;
+        } else if (link.match(fileExtensionPattern)) {
+          linkPath = '/api/files' + linkPath + '/' + link;
+        } else {
+          if (link.startsWith('./')) {
+            link = link.slice(2, link.length);
+          }
+          if (linkPath.includes('#')) {
+            linkPath = linkPath + '/' + link;
+          } else {
+            linkPath = linkPath + '#' + link;
+          }
+        }
+        return linkPath;
+      }
+    }).use(markdownitReplaceLink);
 
     md.core.ruler.push('docdriven', state => {
      this.applyTaskListRule(state); 
@@ -46,6 +91,12 @@ class WikiMd {
       let faIconName = this.mapToFontAwesome(taskItemToken.content, fill);
       return `<i class="fa-li fa fa-${faIconName}"></i>`
     }
+
+    this.md = md;
+  }
+
+  render(markdown) {
+    return this.md.render(markdown);
   }
 
   applyTaskListRule(state) {

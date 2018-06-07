@@ -97,20 +97,26 @@ Vue.component('doc-block-markdown', {
       clipboard.write(dt);
     },
     copyCode: function (e) {
-      let component = this;
+
+      let copyCode = function (code) {
+        this.showModal = true;
+        this.modalText = 'Copy ' + this.block.language + ' to clipboard on OK.';
+        this.clipboardData = code;
+        this.copyFormat = 'text/plain';
+      }.bind(this);
 
       if (this.block.language == 'mxgraph') {
-        let copyMxGraphXml = function (graph) {
-          component.showModal = true;
-          component.modalText = 'Copy mxGraph to clipboard on OK.';
-          component.clipboardData = graph.getXml();
-          component.copyFormat = 'text/plain';
-        }
-
-        let graph = this.blockToGraph(this.block, copyMxGraphXml)
+        let graph = this.blockToGraph(this.block, function(graph) {
+          copyCode(graph.getXml());
+        })
         if (!graph.asyncLayout) {
-          copyMxGraphXml(graph);
+          copyCode(graph.getXml());
         }
+      } else if(this.block.language == 'mxgraphXML') {
+        let graph = this.blockToGraph(this.block);
+        copyCode(graph.getXml());
+      } else if(this.block.language == 'graphviz') {
+        copyCode(this.block.content);
       }
     },
     copyAsHtml: function (e) {
@@ -264,52 +270,7 @@ Vue.component('doc-block-markdown', {
         }
       }
       var markdown = block.content;
-      var md = window.markdownit({
-        highlight: function (str, lang) {
-          if (lang && hljs.getLanguage(lang)) {
-            try {
-              return hljs.highlight(lang, str).value;
-            } catch (__) { }
-          }
-
-          return ''; // use external default escaping
-        },
-        replaceLink: function (link, env) {
-
-          if (link.startsWith('https://') || link.startsWith('http://')) {
-            return link;
-          }
-
-          var linkPath = path;
-          var fileExtensionPattern = /\.[0-9a-z]+$/i;
-          if (link.match(fileExtensionPattern) && path.includes('#')) {
-            var hashIndex = path.indexOf('#');
-            linkPath = path.slice(0, hashIndex);
-            var hashPath = path.slice(hashIndex + 1, path.length);
-            var lastHashPathSegment = _.last(hashPath.split('/'));
-            if (hashPath.length !== lastHashPathSegment.length) {
-              hashPath = hashPath.slice(0, hashPath.length - (lastHashPathSegment.length + 1));
-            }
-            linkPath = '/api/files' + linkPath + '/' + hashPath + '/' + link;
-          } else if (link.match(fileExtensionPattern)) {
-            linkPath = '/api/files' + linkPath + '/' + link;
-          } else {
-            if (link.startsWith('./')) {
-              link = link.slice(2, link.length);
-            }
-            if (linkPath.includes('#')) {
-              linkPath = linkPath + '/' + link;
-            } else {
-              linkPath = linkPath + '#' + link;
-            }
-          }
-          return linkPath;
-        }
-      }).use(markdownitReplaceLink);
-
-      new WikiMd(md);
-
-      return md.render(markdown);
+      return new WikiMd().render(markdown);
     },
     isExecutable: function (block) {
       return block.blockParameter === 'executable';
