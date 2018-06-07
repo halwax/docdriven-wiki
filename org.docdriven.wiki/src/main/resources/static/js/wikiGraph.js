@@ -147,7 +147,7 @@ class WikiGraph {
     let nodeCell = this.innerGraph.insertVertex(this.getDefaultParent(), null, htmlContent,
         x, y,
         boxSize.width, boxSize.height,
-        'strokeWidth='+ strokeWidth + ';rounded=1;absoluteArcSize=1;arcSize=5;editable=0;spacing=4;');
+        'strokeWidth='+ strokeWidth + ';rounded=1;absoluteArcSize=1;arcSize=5;spacing=4;');
 
     if(_.isNil(boxSizeOpt)) {
       this.updateCellSize(nodeCell);
@@ -158,7 +158,7 @@ class WikiGraph {
 
   insertBox(title, description, boxSize, xOpt, yOpt) {
     return this.insertHtmlNode([
-      '<b>' + title + '</b><hr/>',
+      '<h3>' + title + '</h3>',
       description
     ].join(''), boxSize,
       xOpt, yOpt);
