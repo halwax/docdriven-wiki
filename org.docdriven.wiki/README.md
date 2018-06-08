@@ -21,30 +21,37 @@ and is also inspired by others (see similar products).
 let graph = it.graph;
 
 let rootDocPath = graph.insertHtmlNode(`<h3>/</h3>URL: entry point for the wiki`)
-let readmeMdFile = graph.insertHtmlNode(`<h4>README.md</h4>`)
+let readmeMdFile = graph.insertHtmlNode(`<h4>README.md</h4>located in the<br/>working directory`)
 
 graph.connectNodes(rootDocPath, readmeMdFile)
 
-let projectsPath = graph.insertHtmlNode(`<h3>/projects</h3>URL: entry point for configured projects`)
+let projectsPath = graph.insertHtmlNode(`<h3>/projects</h3>URL: entry point for<br/>configured projects`)
 graph.connectNodes(rootDocPath, projectsPath)
 
-let project1Path = graph.insertHtmlNode(`<h3>/projects/projectName1</h3>URL: entry point for project 1`)
+let project1Path = graph.insertHtmlNode(`<h3>/projectName1</h3>URL: entry point for project 1`)
+let project1MdFile = graph.insertHtmlNode(`<h4>README.md</h4>`)
 graph.connectNodes(projectsPath, project1Path)
+graph.connectNodes(project1Path, project1MdFile)
 
-let project2Path = graph.insertHtmlNode(`<h3>/projects/projectName2</h3>URL: entry point for project 2`)
+let project2Path = graph.insertHtmlNode(`<h3>/projectName2</h3>URL: entry point for project 2`)
+let project2MdFile = graph.insertHtmlNode(`<h4>README.md</h4>`)
 graph.connectNodes(projectsPath, project2Path)
+graph.connectNodes(project2Path, project2MdFile)
 
-let project1DocPath = graph.insertHtmlNode(`<h4>/projects/projectName1#readme</h4>`)
-let project1MdFile = graph.insertHtmlNode(`<h4>readme.md</h4>`)
+let project1DocPath = graph.insertHtmlNode(`<h4>#doc1</h4>`)
+let project1DocMdFile = graph.insertHtmlNode(`<h4>doc1.md</h4>`)
 
 graph.connectNodes(project1Path, project1DocPath)
-graph.connectNodes(project1DocPath, project1MdFile)
+graph.connectNodes(project1DocPath, project1DocMdFile)
 
-let project2DocPath = graph.insertHtmlNode(`<h4>/projects/projectName2#readme</h4>`)
-let project2MdFile = graph.insertHtmlNode(`<h4>readme.md</h4>`)
+let project1DocChildPath = graph.insertHtmlNode(`<h4>/info</h2>`)
+let project1DocChildMdFile = graph.insertHtmlNode(`<h4>doc1/info.md</h4>`)
 
+graph.connectNodes(project1DocPath, project1DocChildPath);
+graph.connectNodes(project1DocChildPath, project1DocChildMdFile);
+
+let project2DocPath = graph.insertHtmlNode(`<h4>#doc2</h4>`)
 graph.connectNodes(project2Path, project2DocPath)
-graph.connectNodes(project2DocPath, project2MdFile)
 
 graph.elkLayout()
 ```
