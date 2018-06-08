@@ -75,7 +75,7 @@ class WikiMd {
               return `<i class="fa ${match.slice(1,-1)}"></i>`
             })
           } else if (taskRegex.test(contentPart)) {
-            newContent += `<i class="fa fa-${this.mapToFontAwesome(contentPart, false)} fa-fw></i>`
+            newContent += `<i class="fa fa-${this.mapToFontAwesome(contentPart, false)} fa-fw"></i>`
           } else {
             newContent += md.utils.escapeHtml(contentPart);
           }
