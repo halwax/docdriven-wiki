@@ -270,7 +270,7 @@ Vue.component('doc-block-markdown', {
         }
       }
       var markdown = block.content;
-      return new WikiMd().render(markdown);
+      return new WikiMd(path).render(markdown);
     },
     isExecutable: function (block) {
       return block.blockParameter === 'executable';

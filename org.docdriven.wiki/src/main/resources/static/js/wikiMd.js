@@ -6,7 +6,7 @@ let taskRegex = /\[[ x\?~]\]/;
 
 class WikiMd {
 
-  constructor() {
+  constructor(path) {
 
     var md = window.markdownit({
       html: true,
