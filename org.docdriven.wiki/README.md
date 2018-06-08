@@ -19,6 +19,38 @@ and is also inspired by others (see similar products).
 [//]: # (block)
 ```mxgraph
 let graph = it.graph;
+
+let rootDocPath = graph.insertHtmlNode(`<h3>/</h3>URL: entry point for the wiki`)
+let readmeMdFile = graph.insertHtmlNode(`<h4>README.md</h4>`)
+
+graph.connectNodes(rootDocPath, readmeMdFile)
+
+let projectsPath = graph.insertHtmlNode(`<h3>/projects</h3>URL: entry point for configured projects`)
+graph.connectNodes(rootDocPath, projectsPath)
+
+let project1Path = graph.insertHtmlNode(`<h3>/projects/projectName1</h3>URL: entry point for project 1`)
+graph.connectNodes(projectsPath, project1Path)
+
+let project2Path = graph.insertHtmlNode(`<h3>/projects/projectName2</h3>URL: entry point for project 2`)
+graph.connectNodes(projectsPath, project2Path)
+
+let project1DocPath = graph.insertHtmlNode(`<h4>/projects/projectName1#readme</h4>`)
+let project1MdFile = graph.insertHtmlNode(`<h4>readme.md</h4>`)
+
+graph.connectNodes(project1Path, project1DocPath)
+graph.connectNodes(project1DocPath, project1MdFile)
+
+let project2DocPath = graph.insertHtmlNode(`<h4>/projects/projectName2#readme</h4>`)
+let project2MdFile = graph.insertHtmlNode(`<h4>readme.md</h4>`)
+
+graph.connectNodes(project2Path, project2DocPath)
+graph.connectNodes(project2DocPath, project2MdFile)
+
+graph.elkLayout()
+```
+[//]: # (block)
+```mxgraph
+let graph = it.graph;
 let parent = it.parent;
 
 let boxSize = {
