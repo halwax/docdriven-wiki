@@ -130,23 +130,16 @@ mxElkLayout.prototype.execute = function (parent, onUpdateGraph) {
         var points = [];
         for (var iS = 0; iS < eEdge.sections.length; iS++) {
           var section = eEdge.sections[iS];
-          points.push({
-            x: section.startPoint.x,
-            y: section.startPoint.y
-          })
+          points.push(new mxPoint(section.startPoint.x, section.startPoint.y));
           for (var bI = 0; bI < _.size(section.bendPoints); bI++) {
             var bendPoint = section.bendPoints[bI];
-            points.push({
-              x: bendPoint.x,
-              y: bendPoint.y
-            })
+            points.push(new mxPoint(bendPoint.x,bendPoint.y));
           }
-          points.push({
-            x: section.endPoint.x,
-            y: section.endPoint.y
-          });
+          points.push(new mxPoint(section.endPoint.x, section.endPoint.y));
         }
-        edgeCell.getGeometry().points = points;
+        let geometry = edgeCell.getGeometry().clone();
+        geometry.points = points;
+        edgeCell.setGeometry(geometry);
       }
     } finally {
       model.endUpdate();

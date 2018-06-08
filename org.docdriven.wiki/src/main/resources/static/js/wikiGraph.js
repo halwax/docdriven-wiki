@@ -64,7 +64,6 @@ class WikiGraph {
 
     // Creates the default style for edges
     let edgeStyle = [];
-    edgeStyle[mxConstants.STYLE_EDGE] = mxEdgeStyle.ElbowConnector;
     edgeStyle[mxConstants.STYLE_ENDARROW] = mxConstants.ARROW_BLOCK;
     edgeStyle[mxConstants.STYLE_FONTCOLOR] = 'black';
     edgeStyle[mxConstants.STYLE_STROKECOLOR] = 'black';
@@ -173,9 +172,9 @@ class WikiGraph {
   }
 
   connectNodes(node1, node2, htmlLabel, strokeWidthOpt, additionalEdgeStyleOpt) {
-    let strokeWidth = _.isNil(strokeWidthOpt) ? 1.3 : strokeWidthOpt;
+    let strokeWidth = _.isNil(strokeWidthOpt) ? 1.0 : strokeWidthOpt;
     let additionalEdgeStyle = _.isNil(additionalEdgeStyleOpt) ? '' : additionalEdgeStyleOpt;
-    let edgeStyle = 'strokeWidth=' + strokeWidth + ';rounded=1;';
+    let edgeStyle = 'strokeWidth=' + strokeWidth + ';';
     this.innerGraph.insertEdge(this.getDefaultParent(), null, htmlLabel, node1, node2, edgeStyle + additionalEdgeStyle);
   }
 
