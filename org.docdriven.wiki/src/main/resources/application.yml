@@ -1,4 +1,10 @@
 wiki:
   projects:
+  - name: Know-How
+    path: /Users/ikarus/Space/Wiki/KnowHow
   - name: VueJs
     path: /Users/ikarus/Space/Wiki/VueJs
+  - name: Diagram
+    path: /Users/ikarus/Space/Wiki/Diagram
+  - name: Features
+    path: /Users/ikarus/Space/Wiki/Features

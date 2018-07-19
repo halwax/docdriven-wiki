@@ -147,6 +147,11 @@ Editor.nextImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAA
 /**
  * Specifies the image URL to be used for the transparent background.
  */
+Editor.editImage = (mxClient.IS_SVG) ? 'data:image/gif;base64,R0lGODlhCwALAIABAFdXV////yH5BAEAAAEALAAAAAALAAsAAAIZjB8AiKuc4jvLOGqzrjX6zmkWyChXaUJBAQA7' : IMAGE_PATH + '/edit.gif';
+
+/**
+ * Specifies the image URL to be used for the transparent background.
+ */
 Editor.zoomOutLargeImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAilBMVEUAAAD////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////2N2iNAAAALXRSTlMA+vTcKMM96GRBHwXxi0YaX1HLrKWhiHpWEOnOr52Vb2xKSDcT19PKv5l/Ngdk8+viAAABJklEQVQ4y4WT2XaDMAxEvWD2nSSUNEnTJN3r//+9Sj7ILAY6L0ijC4ONYVZRpo6cByrz2YKSUGorGTpz71lPVHvT+avoB5wIkU/mxk8veceSuNoLg44IzziXjvpih72wKQnm8yc2UoiP/LAd8jQfe2Xf4Pq+2EyYIvv9wbzHHCgwxDdlBtWZOdqDfTCVgqpygQpsZaojVAVc9UjQxnAJDIBhiQv84tq3gMQCAVTxVoSibXJf8tMuc7e1TB/DCmejBNg/w1Y3c+AM5vv4w7xM59/oXamrHaLVqPQ+OTCnmMZxgz0SdL5zji0/ld6j88qGa5KIiBB6WeJGKfUKwSMKLuXgvl1TW0tm5R9UQL/efSDYsnzxD8CinhBsTTdugJatKpJwf8v+ADb8QmvW7AeAAAAAAElFTkSuQmCC';
 
 /**
@@ -193,6 +198,12 @@ Editor.nextLargeImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgC
  * Specifies the image URL to be used for the transparent background.
  */
 Editor.ctrlKey = (mxClient.IS_MAC) ? 'Cmd' : 'Ctrl';
+
+/**
+ * Specifies if the diagram should be saved automatically if possible. Default
+ * is true.
+ */
+Editor.popupsAllowed = true;
 
 /**
  * Editor inherits from mxEventSource
@@ -272,6 +283,14 @@ Editor.prototype.init = function() { };
 /**
  * Sets the XML node for the current diagram.
  */
+Editor.prototype.isChromelessView = function()
+{
+	return this.chromeless;
+};
+
+/**
+ * Sets the XML node for the current diagram.
+ */
 Editor.prototype.setAutosave = function(value)
 {
 	this.autosave = value;
@@ -293,6 +312,11 @@ Editor.prototype.editAsNew = function(xml, title)
 {
 	var p = (title != null) ? '?title=' + encodeURIComponent(title) : '';
 	
+	if (urlParams['ui'] != null)
+	{
+		p += ((p.length > 0) ? '&' : '?') + 'ui=' + urlParams['ui'];
+	}
+	
 	if (this.editorWindow != null && !this.editorWindow.closed)
 	{
 		this.editorWindow.focus();
@@ -312,12 +336,12 @@ Editor.prototype.editAsNew = function(xml, title)
 				}));
 			}
 
-			this.editorWindow = window.open(this.getEditBlankUrl(p +
+			this.editorWindow = this.graph.openLink(this.getEditBlankUrl(p +
 				((p.length > 0) ? '&' : '?') + 'client=1'));
 		}
 		else
 		{
-			this.editorWindow = window.open(this.getEditBlankUrl(p) +
+			this.editorWindow = this.graph.openLink(this.getEditBlankUrl(p) +
 				'#R' + encodeURIComponent(xml));
 		}
 	}
@@ -348,7 +372,7 @@ Editor.prototype.createGraph = function(themes, model)
  */
 Editor.prototype.resetGraph = function()
 {
-	this.graph.gridEnabled = !this.chromeless || urlParams['grid'] == '1';
+	this.graph.gridEnabled = !this.isChromelessView() || urlParams['grid'] == '1';
 	this.graph.graphHandler.guidesEnabled = true;
 	this.graph.setTooltips(true);
 	this.graph.setConnectable(true);
@@ -360,6 +384,9 @@ Editor.prototype.resetGraph = function()
 	this.graph.background = this.graph.defaultGraphBackground;
 	this.graph.pageScale = mxGraph.prototype.pageScale;
 	this.graph.pageFormat = mxGraph.prototype.pageFormat;
+	this.graph.currentScale = 1;
+	this.graph.currentTranslate.x = 0;
+	this.graph.currentTranslate.y = 0;
 	this.updateGraphComponents();
 	this.graph.view.setScale(1);
 };
@@ -369,7 +396,7 @@ Editor.prototype.resetGraph = function()
  */
 Editor.prototype.readGraphState = function(node)
 {
-	this.graph.gridEnabled = node.getAttribute('grid') != '0' && (!this.chromeless || urlParams['grid'] == '1');
+	this.graph.gridEnabled = node.getAttribute('grid') != '0' && (!this.isChromelessView() || urlParams['grid'] == '1');
 	this.graph.gridSize = parseFloat(node.getAttribute('gridSize')) || mxGraph.prototype.gridSize;
 	this.graph.graphHandler.guidesEnabled = node.getAttribute('guides') != '0';
 	this.graph.setTooltips(node.getAttribute('tooltips') != '0');
@@ -377,7 +404,7 @@ Editor.prototype.readGraphState = function(node)
 	this.graph.connectionArrowsEnabled = node.getAttribute('arrows') != '0';
 	this.graph.foldingEnabled = node.getAttribute('fold') != '0';
 
-	if (this.chromeless && this.graph.foldingEnabled)
+	if (this.isChromelessView() && this.graph.foldingEnabled)
 	{
 		this.graph.foldingEnabled = urlParams['nav'] == '1';
 		this.graph.cellRenderer.forceControlClickHandler = this.graph.foldingEnabled;
@@ -394,7 +421,7 @@ Editor.prototype.readGraphState = function(node)
 		this.graph.pageScale = mxGraph.prototype.pageScale;
 	}
 
-	if (!this.graph.lightbox)
+	if (!this.graph.isLightboxView())
 	{
 		var pv = node.getAttribute('page');
 	
@@ -715,10 +742,12 @@ function Dialog(editorUi, elt, w, h, modal, closable, onClose, noScroll)
 	var w0 = w;
 	var h0 = h;
 	
-	var dh = Math.max(document.body.clientHeight, document.documentElement.clientHeight);
+	// clientHeight check is attempted fix for print dialog offset in viewer lightbox
+	var dh = (document.documentElement.clientHeight > 0) ? document.documentElement.clientHeight :
+		Math.max(document.body.clientHeight || 0, document.documentElement.clientHeight);
 	var left = Math.max(1, Math.round((document.body.clientWidth - w - 64) / 2));
 	var top = Math.max(1, Math.round((dh - h - editorUi.footerHeight) / 3));
-
+	
 	// Keeps window size inside available space
 	if (!mxClient.IS_QUIRKS)
 	{

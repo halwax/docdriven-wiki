@@ -14,7 +14,16 @@ EditorUi = function(editor, container, lightbox)
 	
 	var graph = this.editor.graph;
 	graph.lightbox = lightbox;
+	graph.useCssTransforms =
+		this.editor.isChromelessView() &&
+		graph.isCssTransformsSupported();
 
+	// Faster scrollwheel zoom is possible with CSS transforms
+	if (graph.useCssTransforms)
+	{
+		this.lazyZoomDelay = 0;
+	}
+	
 	// Pre-fetches submenu image or replaces with embedded image if supported
 	if (mxClient.IS_SVG)
 	{
@@ -487,6 +496,7 @@ EditorUi = function(editor, container, lightbox)
 	                 ['strokeColor', 'strokeWidth'],
 	                 ['fillColor', 'gradientColor'],
 	                 valueStyles,
+	                 ['opacity'],
 	                 ['align'],
 	                 ['html']];
 	
@@ -865,7 +875,10 @@ EditorUi = function(editor, container, lightbox)
    	{
    		window.setTimeout(mxUtils.bind(this, function()
    		{
-   			this.refresh();
+   			if (this.editor.graph != null)
+   			{
+   				this.refresh();
+   			}
    		}), 0);
    	});
 	
@@ -972,11 +985,6 @@ EditorUi.prototype.footerHeight = 28;
 EditorUi.prototype.sidebarFooterHeight = 34;
 
 /**
- * Specifies the link for the edit button in chromeless mode.
- */
-EditorUi.prototype.editButtonLink = null;
-
-/**
  * Specifies the position of the horizontal split bar. Default is 208 or 118 for
  * screen widths <= 640px.
  */
@@ -996,6 +1004,11 @@ EditorUi.prototype.lightboxMaxFitScale = 2;
  * Specifies if animations are allowed in <executeLayout>. Default is true.
  */
 EditorUi.prototype.lightboxVerticalDivider = 4;
+
+/**
+ * Specifies if single click on horizontal split should collapse sidebar. Default is false.
+ */
+EditorUi.prototype.hsplitClickEnabled = false;
 
 /**
  * Installs the listeners to update the action states.
@@ -1319,10 +1332,13 @@ EditorUi.prototype.initClipboard = function()
 /**
  * Initializes the infinite canvas.
  */
+EditorUi.prototype.lazyZoomDelay = 20;
+
+/**
+ * Initializes the infinite canvas.
+ */
 EditorUi.prototype.initCanvas = function()
 {
-	var graph = this.editor.graph;
-
 	// Initial page layout view, scrollBuffer and timer-based scrolling
 	var graph = this.editor.graph;
 	graph.timerAutoScroll = true;
@@ -1360,7 +1376,7 @@ EditorUi.prototype.initCanvas = function()
 	var resize = null;
 	var ui = this;
 	
-	if (this.editor.chromeless)
+	if (this.editor.isChromelessView())
 	{
         resize = mxUtils.bind(this, function(autoscale, maxScale, cx, cy)
         {
@@ -1517,7 +1533,6 @@ EditorUi.prototype.initCanvas = function()
 				mxEvent.consume(evt);
 			}), Editor.previousLargeImage, mxResources.get('previousPage'));
 			
-			
 			var pageInfo = document.createElement('div');
 			pageInfo.style.display = 'inline-block';
 			pageInfo.style.verticalAlign = 'top';
@@ -1581,7 +1596,7 @@ EditorUi.prototype.initCanvas = function()
 			
 			addButton(mxUtils.bind(this, function(evt)
 			{
-				if (graph.lightbox)
+				if (graph.isLightboxView())
 				{
 					if (graph.view.scale == 1)
 					{
@@ -1707,17 +1722,21 @@ EditorUi.prototype.initCanvas = function()
 	
 			this.addChromelessToolbarItems(addButton);
 	
-			if (this.editor.editButtonLink != null)
+			if (this.editor.editButtonLink != null || this.editor.editButtonFunc != null)
 			{
 				addButton(mxUtils.bind(this, function(evt)
 				{
-					if (this.editor.editButtonLink == '_blank')
+					if (this.editor.editButtonFunc != null) 
+					{
+						this.editor.editButtonFunc();
+					} 
+					else if (this.editor.editButtonLink == '_blank')
 					{
 						this.editor.editAsNew(this.getEditBlankXml());
 					}
 					else
 					{
-						window.open(this.editor.editButtonLink, 'editWindow');
+						graph.openLink(this.editor.editButtonLink, 'editWindow');
 					}
 					
 					mxEvent.consume(evt);
@@ -2002,15 +2021,14 @@ EditorUi.prototype.initCanvas = function()
             
             this.cumulativeZoomFactor = 1;
             this.updateZoomTimeout = null;
-        }), 20);
+        }), this.lazyZoomDelay);
 	};
 	
 	mxEvent.addMouseWheelListener(mxUtils.bind(this, function(evt, up)
 	{
 		// Ctrl+wheel (or pinch on touchpad) is a native browser zoom event is OS X
 		// LATER: Add support for zoom via pinch on trackpad for Chrome in OS X
-		if ((mxEvent.isAltDown(evt) || (mxEvent.isControlDown(evt) && !mxClient.IS_MAC) ||
-			graph.panningHandler.isActive()) && (this.dialogs == null || this.dialogs.length == 0))
+		if ((this.dialogs == null || this.dialogs.length == 0) && graph.isZoomWheelEvent(evt))
 		{
 			var source = mxEvent.getSource(evt);
 			
@@ -2152,7 +2170,7 @@ EditorUi.prototype.addBeforeUnloadListener = function()
 	// This must be disabled during save and image export
 	window.onbeforeunload = mxUtils.bind(this, function()
 	{
-		if (!this.editor.chromeless)
+		if (!this.editor.isChromelessView())
 		{
 			return this.onBeforeUnload();
 		}
@@ -2442,15 +2460,16 @@ EditorUi.prototype.resetScrollbars = function()
 			graph.view.setTranslate(0, 0);
 		}
 	}
-	else if (!this.editor.chromeless)
+	else if (!this.editor.isChromelessView())
 	{
 		if (mxUtils.hasScrollbars(graph.container))
 		{
 			if (graph.pageVisible)
 			{
 				var pad = graph.getPagePadding();
-				graph.container.scrollTop = Math.floor(pad.y - this.editor.initialTopSpacing);
-				graph.container.scrollLeft = Math.floor(Math.min(pad.x, (graph.container.scrollWidth - graph.container.clientWidth) / 2));
+				graph.container.scrollTop = Math.floor(pad.y - this.editor.initialTopSpacing) - 1;
+				graph.container.scrollLeft = Math.floor(Math.min(pad.x,
+					(graph.container.scrollWidth - graph.container.clientWidth) / 2)) - 1;
 
 				// Scrolls graph to visible area
 				var bounds = graph.getGraphBounds();
@@ -2748,31 +2767,31 @@ EditorUi.prototype.updateActionStates = function()
 	
 	if (cells != null)
 	{
-	    	for (var i = 0; i < cells.length; i++)
-	    	{
-	    		var cell = cells[i];
-	    		
-	    		if (graph.getModel().isEdge(cell))
-	    		{
-	    			edgeSelected = true;
-	    		}
-	    		
-	    		if (graph.getModel().isVertex(cell))
-	    		{
-	    			vertexSelected = true;
-	    		}
-	    		
-	    		if (edgeSelected && vertexSelected)
+    	for (var i = 0; i < cells.length; i++)
+    	{
+    		var cell = cells[i];
+    		
+    		if (graph.getModel().isEdge(cell))
+    		{
+    			edgeSelected = true;
+    		}
+    		
+    		if (graph.getModel().isVertex(cell))
+    		{
+    			vertexSelected = true;
+    		}
+    		
+    		if (edgeSelected && vertexSelected)
 			{
 				break;
 			}
-    		}
+		}
 	}
 	
 	// Updates action states
 	var actions = ['cut', 'copy', 'bold', 'italic', 'underline', 'delete', 'duplicate',
 	               'editStyle', 'editTooltip', 'editLink', 'backgroundColor', 'borderColor',
-	               'edit', 'toFront', 'toBack', 'lockUnlock', 'solid', 'dashed',
+	               'edit', 'toFront', 'toBack', 'lockUnlock', 'solid', 'dashed', 'pasteSize',
 	               'dotted', 'fillColor', 'gradientColor', 'shadow', 'fontColor',
 	               'formattedText', 'rounded', 'toggleRounded', 'sharp', 'strokeColor'];
 	
@@ -2783,6 +2802,7 @@ EditorUi.prototype.updateActionStates = function()
 	
 	this.actions.get('setAsDefaultStyle').setEnabled(graph.getSelectionCount() == 1);
 	this.actions.get('clearWaypoints').setEnabled(!graph.isSelectionEmpty());
+	this.actions.get('copySize').setEnabled(graph.getSelectionCount() == 1);
 	this.actions.get('turn').setEnabled(!graph.isSelectionEmpty());
 	this.actions.get('curved').setEnabled(edgeSelected);
 	this.actions.get('rotation').setEnabled(vertexSelected);
@@ -3007,6 +3027,10 @@ EditorUi.prototype.createDivs = function()
 	if (!this.editor.chromeless)
 	{
 		this.tabContainer = this.createTabContainer();
+	}
+	else
+	{
+		this.diagramContainer.style.border = 'none';
 	}
 };
 
@@ -3236,16 +3260,16 @@ EditorUi.prototype.addSplitHandler = function(elt, horizontal, dx, onChange)
 		mxEvent.consume(evt);
 	});
 	
-	mxEvent.addListener(elt, 'click', function(evt)
+	mxEvent.addListener(elt, 'click', mxUtils.bind(this, function(evt)
 	{
-		if (!ignoreClick)
+		if (!ignoreClick && this.hsplitClickEnabled)
 		{
 			var next = (last != null) ? last - dx : 0;
 			last = getValue();
 			onChange(next);
 			mxEvent.consume(evt);
 		}
-	});
+	}));
 
 	mxEvent.addGestureListeners(document, null, moveHandler, dropHandler);
 	
@@ -3288,6 +3312,7 @@ EditorUi.prototype.hideDialog = function(cancel)
 			this.editor.graph.container.focus();
 		}
 		
+		mxUtils.clearSelection();
 		this.editor.fireEvent(new mxEventObject('hideDialog'));
 	}
 };
@@ -3601,6 +3626,19 @@ EditorUi.prototype.showLinkDialog = function(value, btnLabel, fn)
 /**
  * Hides the current menu.
  */
+EditorUi.prototype.showDataDialog = function(cell)
+{
+	if (cell != null)
+	{
+		var dlg = new EditDataDialog(this, cell);
+		this.showDialog(dlg.container, 340, 340, true, false, null, false);
+		dlg.init();
+	}
+};
+
+/**
+ * Hides the current menu.
+ */
 EditorUi.prototype.showBackgroundImageDialog = function(apply)
 {
 	apply = (apply != null) ? apply : mxUtils.bind(this, function(image)
@@ -3707,7 +3745,8 @@ EditorUi.prototype.createKeyHandler = function(editor)
 	// Ignores graph enabled state but not chromeless state
 	keyHandler.isEnabledForEvent = function(evt)
 	{
-		return (!mxEvent.isConsumed(evt) && this.isGraphEvent(evt) && this.isEnabled());
+		return (!mxEvent.isConsumed(evt) && this.isGraphEvent(evt) && this.isEnabled() &&
+			(editorUi.dialogs == null || editorUi.dialogs.length == 0));
 	};
 	
 	// Routes command-key to control-key on Mac
@@ -3864,7 +3903,11 @@ EditorUi.prototype.createKeyHandler = function(editor)
 	// Alt+Shift+Keycode mapping to action
 	var altShiftActions = {67: this.actions.get('clearWaypoints'), // Alt+Shift+C
 						  65: this.actions.get('connectionArrows'), // Alt+Shift+A
-						  80: this.actions.get('connectionPoints') // Alt+Shift+P
+						  76: this.actions.get('editLink'), // Alt+Shift+L
+						  80: this.actions.get('connectionPoints'), // Alt+Shift+P
+						  84: this.actions.get('editTooltip'), // Alt+Shift+T
+						  86: this.actions.get('pasteSize'), // Alt+Shift+V
+						  88: this.actions.get('copySize') // Alt+Shift+X
 	};
 	
 	mxKeyHandler.prototype.getFunction = function(evt)

@@ -20,9 +20,9 @@ var mxClient =
 	 * 
 	 * versionMajor.versionMinor.buildNumber.revisionNumber
 	 * 
-	 * Current version is 3.9.3.
+	 * Current version is 3.9.8.
 	 */
-	VERSION: '3.9.3',
+	VERSION: '3.9.8',
 
 	/**
 	 * Variable: IS_IE
@@ -1329,9 +1329,9 @@ var mxResources =
 	 * 
 	 * Variable: resources
 	 * 
-	 * Associative array that maps from keys to values.
+	 * Object that maps from keys to values.
 	 */
-	resources: [],
+	resources: {},
 
 	/**
 	 * Variable: extension
@@ -2822,7 +2822,14 @@ var mxUtils =
 		{
 			return function()
 			{
-				window.getSelection().removeAllRanges();
+				if (window.getSelection().empty)
+				{
+					window.getSelection().empty();
+				}
+				else if (window.getSelection().removeAllRanges)
+				{
+					window.getSelection().removeAllRanges();
+				}
 			};
 		}
 		else
@@ -3109,7 +3116,8 @@ var mxUtils =
 	 */
 	getTextContent: function(node)
 	{
-		if (node.innerText !== undefined)
+		// Only IE10-
+		if (mxClient.IS_IE && node.innerText !== undefined)
 		{
 			return node.innerText;
 		}
@@ -8089,6 +8097,17 @@ var mxUtils =
 	STYLE_DIRECTION: 'direction',
 
 	/**
+	 * Variable: STYLE_ANCHOR_POINT_DIRECTION
+	 * 
+	 * Defines the key for the anchorPointDirection style. The defines if the
+	 * direction style should be taken into account when computing the fixed
+	 * point location for connected edges. Default is 1 (yes). Set this to 0
+	 * to ignore the direction style for fixed connection points. Value is
+	 * "anchorPointDirection".
+	 */
+	STYLE_ANCHOR_POINT_DIRECTION: 'anchorPointDirection',
+
+	/**
 	 * Variable: STYLE_ELBOW
 	 * 
 	 * Defines the key for the elbow style. Possible values are
@@ -8169,6 +8188,15 @@ var mxUtils =
 	 * 1. Default is 1. See <mxGraph.isCellEditable>. Value is "editable".
 	 */
 	STYLE_EDITABLE: 'editable',
+
+	/**
+	 * Variable: STYLE_BACKGROUND_OUTLINE
+	 * 
+	 * Defines the key for the backgroundOutline style. This specifies if a
+	 * only the background of a cell should be painted when it is highlighted.
+	 * Possible values are 0 or 1. Default is 0. Value is "backgroundOutline".
+	 */
+	STYLE_BACKGROUND_OUTLINE: 'backgroundOutline',
 
 	/**
 	 * Variable: STYLE_BENDABLE
@@ -11049,6 +11077,8 @@ mxXmlRequest.prototype.create = function()
  * Send the <request> to the target URL using the specified functions to
  * process the response asychronously.
  * 
+ * Note: Due to technical limitations, onerror is currently ignored.
+ * 
  * Parameters:
  * 
  * onload - Function to be invoked if a successful response was received.
@@ -12510,7 +12540,8 @@ mxWindow.prototype.show = function()
 	
 	var style = mxUtils.getCurrentStyle(this.contentWrapper);
 	
-	if (!mxClient.IS_QUIRKS && (style.overflow == 'auto' || this.resize != null))
+	if (!mxClient.IS_QUIRKS && (style.overflow == 'auto' || this.resize != null) &&
+		this.contentWrapper.style.display != 'none')
 	{
 		this.contentWrapper.style.height = (this.div.offsetHeight -
 				this.title.offsetHeight - this.contentHeightCorrection) + 'px';
@@ -13112,6 +13143,14 @@ mxDragSource.prototype.dragElementZIndex = 100;
 mxDragSource.prototype.dragElementOpacity = 70;
 
 /**
+ * Variable: checkEventSource
+ * 
+ * Whether the event source should be checked in <graphContainerEvent>. Default
+ * is true.
+ */
+mxDragSource.prototype.checkEventSource = true;
+
+/**
  * Function: isEnabled
  * 
  * Returns <enabled>.
@@ -13292,6 +13331,11 @@ mxDragSource.prototype.startDrag = function(evt)
 	this.dragElement.style.position = 'absolute';
 	this.dragElement.style.zIndex = this.dragElementZIndex;
 	mxUtils.setOpacity(this.dragElement, this.dragElementOpacity);
+
+	if (this.checkEventSource && mxClient.IS_SVG)
+	{
+		this.dragElement.style.pointerEvents = 'none';
+	}
 };
 
 /**
@@ -13326,6 +13370,18 @@ mxDragSource.prototype.removeDragElement = function()
 };
 
 /**
+ * Function: getElementForEvent
+ * 
+ * Returns the topmost element under the given event.
+ */
+mxDragSource.prototype.getElementForEvent = function(evt)
+{
+	return ((mxEvent.isTouchEvent(evt) || mxEvent.isPenEvent(evt)) ?
+			document.elementFromPoint(mxEvent.getClientX(evt), mxEvent.getClientY(evt)) :
+				mxEvent.getSource(evt));
+};
+
+/**
  * Function: graphContainsEvent
  * 
  * Returns true if the given graph contains the given event.
@@ -13336,9 +13392,18 @@ mxDragSource.prototype.graphContainsEvent = function(graph, evt)
 	var y = mxEvent.getClientY(evt);
 	var offset = mxUtils.getOffset(graph.container);
 	var origin = mxUtils.getScrollOrigin();
+	var elt = this.getElementForEvent(evt);
+	
+	if (this.checkEventSource)
+	{
+		while (elt != null && elt != graph.container)
+		{
+			elt = elt.parentNode;
+		}
+	}
 
 	// Checks if event is inside the bounds of the graph container
-	return x >= offset.x - origin.x && y >= offset.y - origin.y &&
+	return elt != null && x >= offset.x - origin.x && y >= offset.y - origin.y &&
 		x <= offset.x - origin.x + graph.container.offsetWidth &&
 		y <= offset.y - origin.y + graph.container.offsetHeight;
 };
@@ -13470,6 +13535,11 @@ mxDragSource.prototype.dragEnter = function(graph, evt)
 	graph.isMouseDown = true;
 	graph.isMouseTrigger = mxEvent.isMouseEvent(evt);
 	this.previewElement = this.createPreviewElement(graph);
+	
+	if (this.previewElement != null && this.checkEventSource && mxClient.IS_SVG)
+	{
+		this.previewElement.style.pointerEvents = 'none';
+	}
 	
 	// Guide is only needed if preview element is used
 	if (this.isGuidesEnabled() && this.previewElement != null)
@@ -13612,7 +13682,7 @@ mxDragSource.prototype.dragOver = function(graph, evt)
  */
 mxDragSource.prototype.drop = function(graph, evt, dropTarget, x, y)
 {
-	this.dropHandler(graph, evt, dropTarget, x, y);
+	this.dropHandler.apply(this, arguments);
 	
 	// Had to move this to after the insert because it will
 	// affect the scrollbars of the window in IE to try and
@@ -18546,6 +18616,13 @@ mxSvgCanvas2D.prototype.imageOffset = 0;
 mxSvgCanvas2D.prototype.strokeTolerance = 0;
 
 /**
+ * Variable: minStrokeWidth
+ * 
+ * Minimum stroke width for output.
+ */
+mxSvgCanvas2D.prototype.minStrokeWidth = 1;
+
+/**
  * Variable: refCount
  * 
  * Local counter for references in SVG export.
@@ -19011,7 +19088,7 @@ mxSvgCanvas2D.prototype.updateFill = function()
  */
 mxSvgCanvas2D.prototype.getCurrentStrokeWidth = function()
 {
-	return Math.max(1, this.format(this.state.strokeWidth * this.state.scale));
+	return Math.max(this.minStrokeWidth, Math.max(0.01, this.format(this.state.strokeWidth * this.state.scale)));
 };
 
 /**
@@ -22420,8 +22497,10 @@ mxStencil.prototype.drawShape = function(canvas, shape, x, y, w, h)
 			Number(this.strokewidth) * minScale;
 	canvas.setStrokeWidth(sw);
 
-	this.drawChildren(canvas, shape, x, y, w, h, this.bgNode, aspect, false);
-	this.drawChildren(canvas, shape, x, y, w, h, this.fgNode, aspect, true);
+	this.drawChildren(canvas, shape, x, y, w, h, this.bgNode, aspect, false, true);
+	this.drawChildren(canvas, shape, x, y, w, h, this.fgNode, aspect, true,
+		!shape.outline || shape.style == null || mxUtils.getValue(
+		shape.style, mxConstants.STYLE_BACKGROUND_OUTLINE, 0) == 0);
 };
 
 /**
@@ -22429,7 +22508,7 @@ mxStencil.prototype.drawShape = function(canvas, shape, x, y, w, h)
  *
  * Draws this stencil inside the given bounds.
  */
-mxStencil.prototype.drawChildren = function(canvas, shape, x, y, w, h, node, aspect, disableShadow)
+mxStencil.prototype.drawChildren = function(canvas, shape, x, y, w, h, node, aspect, disableShadow, paint)
 {
 	if (node != null && w > 0 && h > 0)
 	{
@@ -22439,7 +22518,7 @@ mxStencil.prototype.drawChildren = function(canvas, shape, x, y, w, h, node, asp
 		{
 			if (tmp.nodeType == mxConstants.NODETYPE_ELEMENT)
 			{
-				this.drawNode(canvas, shape, tmp, aspect, disableShadow);
+				this.drawNode(canvas, shape, tmp, aspect, disableShadow, paint);
 			}
 			
 			tmp = tmp.nextSibling;
@@ -22506,7 +22585,7 @@ mxStencil.prototype.computeAspect = function(shape, x, y, w, h, direction)
  *
  * Draws this stencil inside the given bounds.
  */
-mxStencil.prototype.drawNode = function(canvas, shape, node, aspect, disableShadow)
+mxStencil.prototype.drawNode = function(canvas, shape, node, aspect, disableShadow, paint)
 {
 	var name = node.nodeName;
 	var x0 = aspect.x;
@@ -22514,7 +22593,7 @@ mxStencil.prototype.drawNode = function(canvas, shape, node, aspect, disableShad
 	var sx = aspect.width;
 	var sy = aspect.height;
 	var minScale = Math.min(sx, sy);
-
+	
 	if (name == 'save')
 	{
 		canvas.save();
@@ -22523,246 +22602,249 @@ mxStencil.prototype.drawNode = function(canvas, shape, node, aspect, disableShad
 	{
 		canvas.restore();
 	}
-	else if (name == 'path')
+	else if (paint)
 	{
-		canvas.begin();
-
-		// Renders the elements inside the given path
-		var childNode = node.firstChild;
-		
-		while (childNode != null)
+		if (name == 'path')
 		{
-			if (childNode.nodeType == mxConstants.NODETYPE_ELEMENT)
+			canvas.begin();
+	
+			// Renders the elements inside the given path
+			var childNode = node.firstChild;
+			
+			while (childNode != null)
 			{
-				this.drawNode(canvas, shape, childNode, aspect, disableShadow);
+				if (childNode.nodeType == mxConstants.NODETYPE_ELEMENT)
+				{
+					this.drawNode(canvas, shape, childNode, aspect, disableShadow, paint);
+				}
+				
+				childNode = childNode.nextSibling;
+			}
+		}
+		else if (name == 'close')
+		{
+			canvas.close();
+		}
+		else if (name == 'move')
+		{
+			canvas.moveTo(x0 + Number(node.getAttribute('x')) * sx, y0 + Number(node.getAttribute('y')) * sy);
+		}
+		else if (name == 'line')
+		{
+			canvas.lineTo(x0 + Number(node.getAttribute('x')) * sx, y0 + Number(node.getAttribute('y')) * sy);
+		}
+		else if (name == 'quad')
+		{
+			canvas.quadTo(x0 + Number(node.getAttribute('x1')) * sx,
+					y0 + Number(node.getAttribute('y1')) * sy,
+					x0 + Number(node.getAttribute('x2')) * sx,
+					y0 + Number(node.getAttribute('y2')) * sy);
+		}
+		else if (name == 'curve')
+		{
+			canvas.curveTo(x0 + Number(node.getAttribute('x1')) * sx,
+					y0 + Number(node.getAttribute('y1')) * sy,
+					x0 + Number(node.getAttribute('x2')) * sx,
+					y0 + Number(node.getAttribute('y2')) * sy,
+					x0 + Number(node.getAttribute('x3')) * sx,
+					y0 + Number(node.getAttribute('y3')) * sy);
+		}
+		else if (name == 'arc')
+		{
+			canvas.arcTo(Number(node.getAttribute('rx')) * sx,
+					Number(node.getAttribute('ry')) * sy,
+					Number(node.getAttribute('x-axis-rotation')),
+					Number(node.getAttribute('large-arc-flag')),
+					Number(node.getAttribute('sweep-flag')),
+					x0 + Number(node.getAttribute('x')) * sx,
+					y0 + Number(node.getAttribute('y')) * sy);
+		}
+		else if (name == 'rect')
+		{
+			canvas.rect(x0 + Number(node.getAttribute('x')) * sx,
+					y0 + Number(node.getAttribute('y')) * sy,
+					Number(node.getAttribute('w')) * sx,
+					Number(node.getAttribute('h')) * sy);
+		}
+		else if (name == 'roundrect')
+		{
+			var arcsize = Number(node.getAttribute('arcsize'));
+	
+			if (arcsize == 0)
+			{
+				arcsize = mxConstants.RECTANGLE_ROUNDING_FACTOR * 100;
 			}
 			
-			childNode = childNode.nextSibling;
+			var w = Number(node.getAttribute('w')) * sx;
+			var h = Number(node.getAttribute('h')) * sy;
+			var factor = Number(arcsize) / 100;
+			var r = Math.min(w * factor, h * factor);
+			
+			canvas.roundrect(x0 + Number(node.getAttribute('x')) * sx,
+					y0 + Number(node.getAttribute('y')) * sy,
+					w, h, r, r);
 		}
-	}
-	else if (name == 'close')
-	{
-		canvas.close();
-	}
-	else if (name == 'move')
-	{
-		canvas.moveTo(x0 + Number(node.getAttribute('x')) * sx, y0 + Number(node.getAttribute('y')) * sy);
-	}
-	else if (name == 'line')
-	{
-		canvas.lineTo(x0 + Number(node.getAttribute('x')) * sx, y0 + Number(node.getAttribute('y')) * sy);
-	}
-	else if (name == 'quad')
-	{
-		canvas.quadTo(x0 + Number(node.getAttribute('x1')) * sx,
-				y0 + Number(node.getAttribute('y1')) * sy,
-				x0 + Number(node.getAttribute('x2')) * sx,
-				y0 + Number(node.getAttribute('y2')) * sy);
-	}
-	else if (name == 'curve')
-	{
-		canvas.curveTo(x0 + Number(node.getAttribute('x1')) * sx,
-				y0 + Number(node.getAttribute('y1')) * sy,
-				x0 + Number(node.getAttribute('x2')) * sx,
-				y0 + Number(node.getAttribute('y2')) * sy,
-				x0 + Number(node.getAttribute('x3')) * sx,
-				y0 + Number(node.getAttribute('y3')) * sy);
-	}
-	else if (name == 'arc')
-	{
-		canvas.arcTo(Number(node.getAttribute('rx')) * sx,
-				Number(node.getAttribute('ry')) * sy,
-				Number(node.getAttribute('x-axis-rotation')),
-				Number(node.getAttribute('large-arc-flag')),
-				Number(node.getAttribute('sweep-flag')),
-				x0 + Number(node.getAttribute('x')) * sx,
-				y0 + Number(node.getAttribute('y')) * sy);
-	}
-	else if (name == 'rect')
-	{
-		canvas.rect(x0 + Number(node.getAttribute('x')) * sx,
+		else if (name == 'ellipse')
+		{
+			canvas.ellipse(x0 + Number(node.getAttribute('x')) * sx,
 				y0 + Number(node.getAttribute('y')) * sy,
 				Number(node.getAttribute('w')) * sx,
 				Number(node.getAttribute('h')) * sy);
-	}
-	else if (name == 'roundrect')
-	{
-		var arcsize = Number(node.getAttribute('arcsize'));
-
-		if (arcsize == 0)
-		{
-			arcsize = mxConstants.RECTANGLE_ROUNDING_FACTOR * 100;
 		}
-		
-		var w = Number(node.getAttribute('w')) * sx;
-		var h = Number(node.getAttribute('h')) * sy;
-		var factor = Number(arcsize) / 100;
-		var r = Math.min(w * factor, h * factor);
-		
-		canvas.roundrect(x0 + Number(node.getAttribute('x')) * sx,
-				y0 + Number(node.getAttribute('y')) * sy,
-				w, h, r, r);
-	}
-	else if (name == 'ellipse')
-	{
-		canvas.ellipse(x0 + Number(node.getAttribute('x')) * sx,
-			y0 + Number(node.getAttribute('y')) * sy,
-			Number(node.getAttribute('w')) * sx,
-			Number(node.getAttribute('h')) * sy);
-	}
-	else if (name == 'image')
-	{
-		if (!shape.outline)
+		else if (name == 'image')
 		{
-			var src = this.evaluateAttribute(node, 'src', shape);
-			
-			canvas.image(x0 + Number(node.getAttribute('x')) * sx,
-				y0 + Number(node.getAttribute('y')) * sy,
-				Number(node.getAttribute('w')) * sx,
-				Number(node.getAttribute('h')) * sy,
-				src, false, node.getAttribute('flipH') == '1',
-				node.getAttribute('flipV') == '1');
-		}
-	}
-	else if (name == 'text')
-	{
-		if (!shape.outline)
-		{
-			var str = this.evaluateTextAttribute(node, 'str', shape);
-			var rotation = node.getAttribute('vertical') == '1' ? -90 : 0;
-			
-			if (node.getAttribute('align-shape') == '0')
+			if (!shape.outline)
 			{
-				var dr = shape.rotation;
-	
-				// Depends on flipping
-				var flipH = mxUtils.getValue(shape.style, mxConstants.STYLE_FLIPH, 0) == 1;
-				var flipV = mxUtils.getValue(shape.style, mxConstants.STYLE_FLIPV, 0) == 1;
+				var src = this.evaluateAttribute(node, 'src', shape);
 				
-				if (flipH && flipV)
-				{
-					rotation -= dr;
-				}
-				else if (flipH || flipV)
-				{
-					rotation += dr;
-				}
-				else
-				{
-					rotation -= dr;
-				}
-			}
-	
-			rotation -= node.getAttribute('rotation');
-	
-			canvas.text(x0 + Number(node.getAttribute('x')) * sx,
+				canvas.image(x0 + Number(node.getAttribute('x')) * sx,
 					y0 + Number(node.getAttribute('y')) * sy,
-					0, 0, str, node.getAttribute('align') || 'left',
-					node.getAttribute('valign') || 'top', false, '',
-					null, false, rotation);
-		}
-	}
-	else if (name == 'include-shape')
-	{
-		var stencil = mxStencilRegistry.getStencil(node.getAttribute('name'));
-		
-		if (stencil != null)
-		{
-			var x = x0 + Number(node.getAttribute('x')) * sx;
-			var y = y0 + Number(node.getAttribute('y')) * sy;
-			var w = Number(node.getAttribute('w')) * sx;
-			var h = Number(node.getAttribute('h')) * sy;
-			
-			stencil.drawShape(canvas, shape, x, y, w, h);
-		}
-	}
-	else if (name == 'fillstroke')
-	{
-		canvas.fillAndStroke();
-	}
-	else if (name == 'fill')
-	{
-		canvas.fill();
-	}
-	else if (name == 'stroke')
-	{
-		canvas.stroke();
-	}
-	else if (name == 'strokewidth')
-	{
-		var s = (node.getAttribute('fixed') == '1') ? 1 : minScale;
-		canvas.setStrokeWidth(Number(node.getAttribute('width')) * s);
-	}
-	else if (name == 'dashed')
-	{
-		canvas.setDashed(node.getAttribute('dashed') == '1');
-	}
-	else if (name == 'dashpattern')
-	{
-		var value = node.getAttribute('pattern');
-		
-		if (value != null)
-		{
-			var tmp = value.split(' ');
-			var pat = [];
-			
-			for (var i = 0; i < tmp.length; i++)
-			{
-				if (tmp[i].length > 0)
-				{
-					pat.push(Number(tmp[i]) * minScale);
-				}
+					Number(node.getAttribute('w')) * sx,
+					Number(node.getAttribute('h')) * sy,
+					src, false, node.getAttribute('flipH') == '1',
+					node.getAttribute('flipV') == '1');
 			}
-			
-			value = pat.join(' ');
-			canvas.setDashPattern(value);
 		}
-	}
-	else if (name == 'strokecolor')
-	{
-		canvas.setStrokeColor(node.getAttribute('color'));
-	}
-	else if (name == 'linecap')
-	{
-		canvas.setLineCap(node.getAttribute('cap'));
-	}
-	else if (name == 'linejoin')
-	{
-		canvas.setLineJoin(node.getAttribute('join'));
-	}
-	else if (name == 'miterlimit')
-	{
-		canvas.setMiterLimit(Number(node.getAttribute('limit')));
-	}
-	else if (name == 'fillcolor')
-	{
-		canvas.setFillColor(node.getAttribute('color'));
-	}
-	else if (name == 'alpha')
-	{
-		canvas.setAlpha(node.getAttribute('alpha'));
-	}
-	else if (name == 'fontcolor')
-	{
-		canvas.setFontColor(node.getAttribute('color'));
-	}
-	else if (name == 'fontstyle')
-	{
-		canvas.setFontStyle(node.getAttribute('style'));
-	}
-	else if (name == 'fontfamily')
-	{
-		canvas.setFontFamily(node.getAttribute('family'));
-	}
-	else if (name == 'fontsize')
-	{
-		canvas.setFontSize(Number(node.getAttribute('size')) * minScale);
-	}
-	
-	if (disableShadow && (name == 'fillstroke' || name == 'fill' || name == 'stroke'))
-	{
-		disableShadow = false;
-		canvas.setShadow(false);
+		else if (name == 'text')
+		{
+			if (!shape.outline)
+			{
+				var str = this.evaluateTextAttribute(node, 'str', shape);
+				var rotation = node.getAttribute('vertical') == '1' ? -90 : 0;
+				
+				if (node.getAttribute('align-shape') == '0')
+				{
+					var dr = shape.rotation;
+		
+					// Depends on flipping
+					var flipH = mxUtils.getValue(shape.style, mxConstants.STYLE_FLIPH, 0) == 1;
+					var flipV = mxUtils.getValue(shape.style, mxConstants.STYLE_FLIPV, 0) == 1;
+					
+					if (flipH && flipV)
+					{
+						rotation -= dr;
+					}
+					else if (flipH || flipV)
+					{
+						rotation += dr;
+					}
+					else
+					{
+						rotation -= dr;
+					}
+				}
+		
+				rotation -= node.getAttribute('rotation');
+		
+				canvas.text(x0 + Number(node.getAttribute('x')) * sx,
+						y0 + Number(node.getAttribute('y')) * sy,
+						0, 0, str, node.getAttribute('align') || 'left',
+						node.getAttribute('valign') || 'top', false, '',
+						null, false, rotation);
+			}
+		}
+		else if (name == 'include-shape')
+		{
+			var stencil = mxStencilRegistry.getStencil(node.getAttribute('name'));
+			
+			if (stencil != null)
+			{
+				var x = x0 + Number(node.getAttribute('x')) * sx;
+				var y = y0 + Number(node.getAttribute('y')) * sy;
+				var w = Number(node.getAttribute('w')) * sx;
+				var h = Number(node.getAttribute('h')) * sy;
+				
+				stencil.drawShape(canvas, shape, x, y, w, h);
+			}
+		}
+		else if (name == 'fillstroke')
+		{
+			canvas.fillAndStroke();
+		}
+		else if (name == 'fill')
+		{
+			canvas.fill();
+		}
+		else if (name == 'stroke')
+		{
+			canvas.stroke();
+		}
+		else if (name == 'strokewidth')
+		{
+			var s = (node.getAttribute('fixed') == '1') ? 1 : minScale;
+			canvas.setStrokeWidth(Number(node.getAttribute('width')) * s);
+		}
+		else if (name == 'dashed')
+		{
+			canvas.setDashed(node.getAttribute('dashed') == '1');
+		}
+		else if (name == 'dashpattern')
+		{
+			var value = node.getAttribute('pattern');
+			
+			if (value != null)
+			{
+				var tmp = value.split(' ');
+				var pat = [];
+				
+				for (var i = 0; i < tmp.length; i++)
+				{
+					if (tmp[i].length > 0)
+					{
+						pat.push(Number(tmp[i]) * minScale);
+					}
+				}
+				
+				value = pat.join(' ');
+				canvas.setDashPattern(value);
+			}
+		}
+		else if (name == 'strokecolor')
+		{
+			canvas.setStrokeColor(node.getAttribute('color'));
+		}
+		else if (name == 'linecap')
+		{
+			canvas.setLineCap(node.getAttribute('cap'));
+		}
+		else if (name == 'linejoin')
+		{
+			canvas.setLineJoin(node.getAttribute('join'));
+		}
+		else if (name == 'miterlimit')
+		{
+			canvas.setMiterLimit(Number(node.getAttribute('limit')));
+		}
+		else if (name == 'fillcolor')
+		{
+			canvas.setFillColor(node.getAttribute('color'));
+		}
+		else if (name == 'alpha')
+		{
+			canvas.setAlpha(node.getAttribute('alpha'));
+		}
+		else if (name == 'fontcolor')
+		{
+			canvas.setFontColor(node.getAttribute('color'));
+		}
+		else if (name == 'fontstyle')
+		{
+			canvas.setFontStyle(node.getAttribute('style'));
+		}
+		else if (name == 'fontfamily')
+		{
+			canvas.setFontFamily(node.getAttribute('family'));
+		}
+		else if (name == 'fontsize')
+		{
+			canvas.setFontSize(Number(node.getAttribute('size')) * minScale);
+		}
+		
+		if (disableShadow && (name == 'fillstroke' || name == 'fill' || name == 'stroke'))
+		{
+			disableShadow = false;
+			canvas.setShadow(false);
+		}
 	}
 };
 /**
@@ -22854,6 +22936,13 @@ mxShape.prototype.scale = 1;
  * Rendering hint for configuring the canvas.
  */
 mxShape.prototype.antiAlias = true;
+
+/**
+ * Variable: minSvgStrokeWidth
+ * 
+ * Minimum stroke width for SVG output.
+ */
+mxShape.prototype.minSvgStrokeWidth = 1;
 
 /**
  * Variable: bounds
@@ -23371,6 +23460,7 @@ mxShape.prototype.createCanvas = function()
 		canvas.setFillColor = function() {};
 		canvas.setGradient = function() {};
 		canvas.setDashed = function() {};
+		canvas.text = function() {};
 	}
 
 	return canvas;
@@ -23397,6 +23487,8 @@ mxShape.prototype.createSvgCanvas = function()
 	{
 		this.node.removeAttribute('transform');
 	}
+
+	canvas.minStrokeWidth = this.minSvgStrokeWidth;
 	
 	if (!this.antiAlias)
 	{
@@ -23636,6 +23728,27 @@ mxShape.prototype.destroyCanvas = function(canvas)
  */
 mxShape.prototype.paint = function(c)
 {
+	var strokeDrawn = false;
+	
+	if (c != null && this.outline)
+	{
+		var stroke = c.stroke;
+		
+		c.stroke = function()
+		{
+			strokeDrawn = true;
+			stroke.apply(this, arguments);
+		};
+
+		var fillAndStroke = c.fillAndStroke;
+		
+		c.fillAndStroke = function()
+		{
+			strokeDrawn = true;
+			fillAndStroke.apply(this, arguments);
+		};
+	}
+
 	// Scale is passed-through to canvas
 	var s = this.scale;
 	var x = this.bounds.x / s;
@@ -23712,6 +23825,13 @@ mxShape.prototype.paint = function(c)
 	if (bg != null && c.state != null && c.state.transform != null)
 	{
 		bg.setAttribute('transform', c.state.transform);
+	}
+	
+	// Draws highlight rectangle if no stroke was used
+	if (c != null && this.outline && !strokeDrawn)
+	{
+		c.rect(x, y, w, h);
+		c.stroke();
 	}
 };
 
@@ -23796,8 +23916,13 @@ mxShape.prototype.updateTransform = function(c, x, y, w, h)
 mxShape.prototype.paintVertexShape = function(c, x, y, w, h)
 {
 	this.paintBackground(c, x, y, w, h);
-	c.setShadow(false);
-	this.paintForeground(c, x, y, w, h);
+	
+	if (!this.outline || this.style == null || mxUtils.getValue(
+		this.style, mxConstants.STYLE_BACKGROUND_OUTLINE, 0) == 0)
+	{
+		c.setShadow(false);
+		this.paintForeground(c, x, y, w, h);
+	}
 };
 
 /**
@@ -24132,6 +24257,16 @@ mxShape.prototype.setCursor = function(cursor)
 mxShape.prototype.getCursor = function()
 {
 	return this.cursor;
+};
+
+/**
+ * Function: isRoundable
+ * 
+ * Hook for subclassers.
+ */
+mxShape.prototype.isRoundable = function()
+{
+	return false;
 };
 
 /**
@@ -24874,6 +25009,16 @@ mxRectangleShape.prototype.paintBackground = function(c, x, y, w, h)
 			
 		c.fillAndStroke();
 	}
+};
+
+/**
+ * Function: isRoundable
+ * 
+ * Adds roundable support.
+ */
+mxRectangleShape.prototype.isRoundable = function(c, x, y, w, h)
+{
+	return true;
 };
 
 /**
@@ -27332,6 +27477,16 @@ mxImageShape.prototype.createHtml = function()
 };
 
 /**
+ * Function: isRoundable
+ * 
+ * Disables inherited roundable support.
+ */
+mxImageShape.prototype.isRoundable = function(c, x, y, w, h)
+{
+	return false;
+};
+
+/**
  * Function: paintVertexShape
  * 
  * Generic background painting implementation.
@@ -27787,11 +27942,24 @@ mxCylinder.prototype.paintVertexShape = function(c, x, y, w, h)
 	this.redrawPath(c, x, y, w, h, false);
 	c.fillAndStroke();
 	
-	c.setShadow(false);
-	
-	c.begin();
-	this.redrawPath(c, x, y, w, h, true);
-	c.stroke();
+	if (!this.outline || this.style == null || mxUtils.getValue(
+		this.style, mxConstants.STYLE_BACKGROUND_OUTLINE, 0) == 0)
+	{
+		c.setShadow(false);
+		c.begin();
+		this.redrawPath(c, x, y, w, h, true);
+		c.stroke();
+	}
+};
+
+/**
+ * Function: redrawPath
+ *
+ * Draws the path for this shape.
+ */
+mxCylinder.prototype.getCylinderSize = function(x, y, w, h)
+{
+	return Math.min(this.maxHeight, Math.round(h / 5));
 };
 
 /**
@@ -27801,7 +27969,7 @@ mxCylinder.prototype.paintVertexShape = function(c, x, y, w, h)
  */
 mxCylinder.prototype.redrawPath = function(c, x, y, w, h, isForeground)
 {
-	var dy = Math.min(this.maxHeight, Math.round(h / 5));
+	var dy = this.getCylinderSize(x, y, w, h);
 	
 	if ((isForeground && this.fill != null) || (!isForeground && this.fill == null))
 	{
@@ -44710,6 +44878,7 @@ mxPrintPreview.prototype.writeHead = function(doc, css)
 	// Removes horizontal rules and page selector from print output
 	doc.writeln('<style type="text/css">');
 	doc.writeln('@media print {');
+	doc.writeln('  * { -webkit-print-color-adjust: exact; }');
 	doc.writeln('  table.mxPageSelector { display: none; }');
 	doc.writeln('  hr.mxPageBreak { display: none; }');
 	doc.writeln('}');
@@ -47555,6 +47724,13 @@ mxCellRenderer.prototype.legacySpacing = true;
 mxCellRenderer.prototype.antiAlias = true;
 
 /**
+ * Variable: minSvgStrokeWidth
+ * 
+ * Minimum stroke width for SVG output.
+ */
+mxCellRenderer.prototype.minSvgStrokeWidth = 1;
+
+/**
  * Variable: forceControlClickHandler
  * 
  * Specifies if the enabled state of the graph should be ignored in the control
@@ -48949,6 +49125,7 @@ mxCellRenderer.prototype.redrawShape = function(state, force, rendering)
 		
 		if (state.shape != null)
 		{
+			state.shape.minSvgStrokeWidth = this.minSvgStrokeWidth;
 			state.shape.antiAlias = this.antiAlias;
 	
 			this.createIndicatorShape(state);
@@ -51027,8 +51204,7 @@ mxGraphView.prototype.scaleAndTranslate = function(scale, dx, dy)
 
 		if (this.isEventsEnabled())
 		{
-			this.revalidate();
-			this.graph.sizeDidChange();
+			this.viewStateChanged();
 		}
 	}
 	
@@ -51067,8 +51243,7 @@ mxGraphView.prototype.setScale = function(value)
 
 		if (this.isEventsEnabled())
 		{
-			this.revalidate();
-			this.graph.sizeDidChange();
+			this.viewStateChanged();
 		}
 	}
 	
@@ -51109,13 +51284,23 @@ mxGraphView.prototype.setTranslate = function(dx, dy)
 
 		if (this.isEventsEnabled())
 		{
-			this.revalidate();
-			this.graph.sizeDidChange();
+			this.viewStateChanged();
 		}
 	}
 	
 	this.fireEvent(new mxEventObject(mxEvent.TRANSLATE,
 		'translate', this.translate, 'previousTranslate', previousTranslate));
+};
+
+/**
+ * Function: viewStateChanged
+ * 
+ * Invoked after <scale> and/or <translate> has changed.
+ */
+mxGraphView.prototype.viewStateChanged = function()
+{
+	this.revalidate();
+	this.graph.sizeDidChange();
 };
 
 /**
@@ -56695,7 +56880,7 @@ mxGraph.prototype.fit = function(border, keepOrigin, margin, enabled, ignoreWidt
 				h2 = Math.max(h2, this.backgroundImage.height - bounds.y / s);
 			}
 			
-			var b = ((keepOrigin) ? border : 2 * border) + margin;
+			var b = ((keepOrigin) ? border : 2 * border) + margin + 1;
 
 			w1 -= b;
 			h1 -= b;
@@ -56770,8 +56955,8 @@ mxGraph.prototype.sizeDidChange = function()
 	{
 		var border = this.getBorder();
 		
-		var width = Math.max(0, bounds.x + bounds.width + border);
-		var height = Math.max(0, bounds.y + bounds.height + border);
+		var width = Math.max(0, bounds.x + bounds.width + 2 * border * this.view.scale);
+		var height = Math.max(0, bounds.y + bounds.height + 2 * border * this.view.scale);
 		
 		if (this.minimumContainerSize != null)
 		{
@@ -60387,7 +60572,8 @@ mxGraph.prototype.getConnectionPoint = function(vertex, constraint)
 		var r1 = 0;
 		
 		// Bounds need to be rotated by 90 degrees for further computation
-		if (direction != null)
+		if (direction != null && mxUtils.getValue(vertex.style,
+			mxConstants.STYLE_ANCHOR_POINT_DIRECTION, 1) == 1)
 		{
 			if (direction == mxConstants.DIRECTION_NORTH)
 			{
@@ -60403,7 +60589,8 @@ mxGraph.prototype.getConnectionPoint = function(vertex, constraint)
 			}
 
 			// Bounds need to be rotated by 90 degrees for further computation
-			if (direction == mxConstants.DIRECTION_NORTH || direction == mxConstants.DIRECTION_SOUTH)
+			if (direction == mxConstants.DIRECTION_NORTH ||
+				direction == mxConstants.DIRECTION_SOUTH)
 			{
 				bounds.rotate90();
 			}
@@ -63015,7 +63202,7 @@ mxGraph.prototype.isCellsLocked = function()
 };
 
 /**
- * Function: setLocked
+ * Function: setCellsLocked
  * 
  * Sets if any cell may be moved, sized, bended, disconnected, edited or
  * selected.
@@ -67172,7 +67359,8 @@ mxOutline.prototype.getSourceGraphBounds = function()
  */
 mxOutline.prototype.update = function(revalidate)
 {
-	if (this.source != null && this.outline != null)
+	if (this.source != null && this.source.container != null &&
+		this.outline != null && this.outline.container != null)
 	{
 		var sourceScale = this.source.view.scale;
 		var scaledGraphBounds = this.getSourceGraphBounds();
@@ -69811,8 +69999,8 @@ mxGraphHandler.prototype.mouseMove = function(sender, me)
 		// fired on the container with no associated state.
 		mxEvent.consume(me.getEvent());
 	}
-	else if ((this.isMoveEnabled() || this.isCloneEnabled()) && this.updateCursor &&
-		!me.isConsumed() && me.getState() != null && !graph.isMouseDown)
+	else if ((this.isMoveEnabled() || this.isCloneEnabled()) && this.updateCursor && !me.isConsumed() &&
+		(me.getState() != null || me.sourceState != null) && !graph.isMouseDown)
 	{
 		var cursor = graph.getCursorForMouseEvent(me);
 		
@@ -69830,7 +70018,7 @@ mxGraphHandler.prototype.mouseMove = function(sender, me)
 
 		// Sets the cursor on the original source state under the mouse
 		// instead of the event source state which can be the parent
-		if (me.sourceState != null)
+		if (cursor != null && me.sourceState != null)
 		{
 			me.sourceState.setCursor(cursor);
 		}
@@ -72621,6 +72809,11 @@ mxConnectionHandler.prototype.updateCurrentState = function(me, point)
 		{
 			this.marker.process(me);
 			this.currentState = this.marker.getValidState();
+			
+			if (this.currentState != null && !this.isCellEnabled(this.currentState.cell))
+			{
+				this.currentState = null;
+			}
 		}
 
 		var outline = this.isOutlineConnectEvent(me);
@@ -72673,6 +72866,16 @@ mxConnectionHandler.prototype.updateCurrentState = function(me, point)
 			}
 		}
 	}
+};
+
+/**
+ * Function: isCellEnabled
+ * 
+ * Returns true if the given cell does not allow new connections to be created.
+ */
+mxConnectionHandler.prototype.isCellEnabled = function(cell)
+{
+	return true;
 };
 
 /**
@@ -73955,7 +74158,7 @@ mxConstraintHandler.prototype.getCellForEvent = function(me, point)
 		}
 	}
 	
-	return cell;
+	return (this.graph.isCellLocked(cell)) ? null : cell;
 };
 
 /**
@@ -78119,7 +78322,13 @@ mxEdgeHandler.prototype.getPreviewTerminalState = function(me)
 	else if (!this.graph.isIgnoreTerminalEvent(me.getEvent()))
 	{
 		this.marker.process(me);
-
+		var state = this.marker.getValidState();
+		
+		if (state != null && this.graph.isCellLocked(state.cell))
+		{
+			this.marker.reset();
+		}
+		
 		return this.marker.getValidState();
 	}
 	else
@@ -78453,6 +78662,12 @@ mxEdgeHandler.prototype.mouseMove = function(sender, me)
 					this.marker.highlight.repaint();
 					terminalState = null;
 				}
+			}
+			
+			if (terminalState != null && this.graph.isCellLocked(terminalState.cell))
+			{
+				terminalState = null;
+				this.marker.reset();
 			}
 			
 			var clone = this.clonePreviewState(this.currentPoint, (terminalState != null) ? terminalState.cell : null);
@@ -79665,8 +79880,11 @@ mxEdgeSegmentHandler.prototype.getCurrentPoints = function()
 	if (pts != null)
 	{
 		// Special case for straight edges where we add a virtual middle handle for moving the edge
-		if (pts.length == 2 || (pts.length == 3 && (pts[0].x == pts[1].x && pts[1].x == pts[2].x ||
-				pts[0].y == pts[1].y && pts[1].y == pts[2].y)))
+		var tol = Math.max(1, this.graph.view.scale);
+		
+		if (pts.length == 2 || (pts.length == 3 &&
+			(Math.abs(pts[0].x - pts[1].x) < tol && Math.abs(pts[1].x - pts[2].x) < tol ||
+			Math.abs(pts[0].y - pts[1].y) < tol && Math.abs(pts[1].y - pts[2].y) < tol)))
 		{
 			var cx = pts[0].x + (pts[pts.length - 1].x - pts[0].x) / 2;
 			var cy = pts[0].y + (pts[pts.length - 1].y - pts[0].y) / 2;
@@ -80629,6 +80847,16 @@ mxTooltipHandler.prototype.init = function()
 };
 
 /**
+ * Function: getStateForEvent
+ * 
+ * Returns the <mxCellState> to be used for showing a tooltip for this event.
+ */
+mxTooltipHandler.prototype.getStateForEvent = function(me)
+{
+	return me.getState();
+};
+
+/**
  * Function: mouseDown
  * 
  * Handles the event by initiating a rubberband selection. By consuming the
@@ -80651,10 +80879,11 @@ mxTooltipHandler.prototype.mouseMove = function(sender, me)
 	if (me.getX() != this.lastX || me.getY() != this.lastY)
 	{
 		this.reset(me, true);
+		var state = this.getStateForEvent(me);
 		
-		if (this.isHideOnHover() || me.getState() != this.state || (me.getSource() != this.node &&
-			(!this.stateSource || (me.getState() != null && this.stateSource ==
-			(me.isSource(me.getState().shape) || !me.isSource(me.getState().text))))))
+		if (this.isHideOnHover() || state != this.state || (me.getSource() != this.node &&
+			(!this.stateSource || (state != null && this.stateSource ==
+			(me.isSource(state.shape) || !me.isSource(state.text))))))
 		{
 			this.hideTooltip();
 		}
@@ -80696,16 +80925,16 @@ mxTooltipHandler.prototype.resetTimer = function()
  * 
  * Resets and/or restarts the timer to trigger the display of the tooltip.
  */
-mxTooltipHandler.prototype.reset = function(me, restart)
+mxTooltipHandler.prototype.reset = function(me, restart, state)
 {
 	if (!this.ignoreTouchEvents || mxEvent.isMouseEvent(me.getEvent()))
 	{
 		this.resetTimer();
+		state = (state != null) ? state : this.getStateForEvent(me);
 		
-		if (restart && this.isEnabled() && me.getState() != null && (this.div == null ||
+		if (restart && this.isEnabled() && state != null && (this.div == null ||
 			this.div.style.visibility == 'hidden'))
 		{
-			var state = me.getState();
 			var node = me.getSource();
 			var x = me.getX();
 			var y = me.getY();
