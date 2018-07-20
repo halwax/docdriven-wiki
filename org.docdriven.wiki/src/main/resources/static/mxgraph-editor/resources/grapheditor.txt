@@ -98,6 +98,7 @@ editDiagram=Edit Diagram
 editImage=Edit Image
 editLink=Edit Link
 editStyle=Edit Style
+editSVGDiagram=Edit SVG Diagram
 editTooltip=Edit Tooltip
 enterGroup=Enter Group
 enterValue=Enter Value

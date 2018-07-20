@@ -47,6 +47,7 @@ class WikiGraph {
   }
 
   applyStyle() {
+
     // Creates the default style for vertices
     let vertexStyle = [];
 

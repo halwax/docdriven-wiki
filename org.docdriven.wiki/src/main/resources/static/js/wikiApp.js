@@ -115,7 +115,7 @@ Vue.component('doc-block-markdown', {
       } else if(this.block.language == 'mxgraphXML') {
         let graph = this.blockToGraph(this.block);
         copyCode(graph.getXml());
-      } else if(this.block.language == 'graphviz') {
+      } else {
         copyCode(this.block.content);
       }
     },
@@ -276,7 +276,7 @@ Vue.component('doc-block-markdown', {
       return block.blockParameter === 'executable';
     },
     isSvg: function (block) {
-      return _.includes(['graphviz', 'mxgraph', 'mxgraphXML'], block.language)
+      return _.includes(['graphviz', 'mxgraph', 'mxgraphXML', 'svg'], block.language)
     }
   }
 });
@@ -437,7 +437,7 @@ Vue.component('doc-block-editor', {
         return 'plaintext';
       } else if (editorLanguage == 'mxgraph') {
         return 'javascript';
-      } else if (editorLanguage == 'mxgraphXML') {
+      } else if (editorLanguage == 'mxgraphXML' || editorLanguage == 'svg') {
         return 'xml';
       }
       return editorLanguage;
