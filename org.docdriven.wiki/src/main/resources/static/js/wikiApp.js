@@ -138,9 +138,12 @@ Vue.component('doc-block-markdown', {
         let svgBox = svgElement.getBBox();
         let canvasElement = document.createElement('canvas');
 
-        canvasElement.width = svgImage.width;
-        canvasElement.height = svgImage.height;
-        canvasElement.getContext('2d').drawImage(svgImage, 0, 0);
+        canvasElement.width = svgImage.width * 2;
+        canvasElement.height = svgImage.height * 2;
+        
+        let context = canvasElement.getContext('2d');
+        context.imageSmoothingQuality = 'high';
+        context.drawImage(svgImage, 0, 0, canvasElement.width, canvasElement.height);
 
         let pngDataUrl = canvasElement.toDataURL('image/png');
         onloadPngDataUrl(pngDataUrl);
