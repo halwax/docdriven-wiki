@@ -1,4 +1,35 @@
 /**
+ * Adds the general palette to the sidebar.
+ */
+Sidebar.prototype.addC4Palette = function(dir)
+{
+	this.addStencilPalette('c4', 'C4', null,
+		null, null, null, null, null, [
+      this.createVertexTemplateEntry('strokeWidth=1;rounded=1;absoluteArcSize=1;arcSize=5;spacing=4;html=1;', 140, 80, 
+        [
+          '<div style="font-size: 14px"><b>Name</b></div>',
+          '<div style="font-size: 12px ; margin-bottom: 5px">[Person]</div>',
+          '<div style="font-size: 10px">Description</div>'
+        ].join(''), 
+        'Person'),
+      this.createVertexTemplateEntry('strokeWidth=1;rounded=1;absoluteArcSize=1;arcSize=5;spacing=4;html=1;', 140, 80, 
+        [
+          '<div style="font-size: 14px"><b>Name</b></div>',
+          '<div style="font-size: 12px ; margin-bottom: 5px">[Software System]</div>',
+          '<div style="font-size: 10px">Description</div>'
+        ].join(''), 
+        'Software System'),   
+      this.createVertexTemplateEntry('strokeWidth=1;rounded=1;absoluteArcSize=1;arcSize=5;spacing=4;html=1;', 140, 80, 
+        [
+          '<div style="font-size: 14px"><b>Name</b></div>',
+          '<div style="font-size: 12px ; margin-bottom: 5px">[Container: Application]</div>',
+          '<div style="font-size: 10px">Description</div>'
+        ].join(''), 
+        'Container'),
+      ]);
+};
+
+/**
  * Constructs a new edit file dialog.
  */
 var EditSvgDiagramDialog = function (editorUi) {
@@ -248,6 +279,14 @@ EditSvgDiagramDialog.showNewWindowOption = true;
       this.addMenuItems(menu, ['copyConnect', 'collapseExpand', '-', 'editDiagram', 'editSVGDiagram']);
     })));
   };
+
+  var sidebarInit = Sidebar.prototype.init;
+  Sidebar.prototype.init = function() {
+    sidebarInit.apply(this, arguments);
+    this.addC4Palette();
+    this.removePalette('misc');
+    this.removePalette('clipart');
+  }
 
   // Adds required resources (disables loading of fallback properties, this can only
   // be used if we know that all keys are defined in the language specific file)
